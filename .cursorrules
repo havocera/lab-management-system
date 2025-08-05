@@ -1,0 +1,16 @@
+项目使用vue3,unocss,状态管理使用pinina，项目使用动态菜单管理。后台根据权限加载菜单
+/endtp是该项目的后台api，使用thinkphp完成
+/src/api是前端api，使用axios完成
+/src/utils是工具函数，使用js完成
+/src/views是前端页面，使用vue3完成
+/src/components是前端组件，使用vue3完成
+/src/store是状态管理，使用pinina完成
+/src/router是路由管理，使用vue-router完成
+/src/assets是静态资源，使用unocss完成
+/src/layout是布局管理，使用vue3完成
+/src/App.vue是入口文件，使用vue3完成
+/src/main.js是项目入口，使用vue3完成
+/src/router/index.js是路由入口，使用vue-router完成
+/src/router/routes.js是路由配置，使用vue-router完成
+
+labmanage.sql是数据库文件，使用mysql完成

@@ -1,0 +1,6 @@
+index index.html index.htm index.php default.php;
+  
+        #??????????????????if
+        if (!-e $request_filename){
+        rewrite  ^(.*)$  /index.php?s=$1  last;   break;
+        }

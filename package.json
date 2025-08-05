@@ -1,0 +1,37 @@
+{
+  "name": "labmanagefron",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "format": "prettier --write src/"
+  },
+  "dependencies": {
+    "axios": "^1.8.4",
+    "pinia": "^3.0.1",
+    "terser": "^5.39.0",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@iconify-json/carbon": "^1.2.8",
+    "@iconify/json": "^2.2.323",
+    "@iconify/utils": "^2.3.0",
+    "@unocss/preset-attributify": "^66.1.0-beta.8",
+    "@unocss/preset-icons": "^66.1.0-beta.8",
+    "@unocss/vite": "^66.1.0-beta.8",
+    "@vitejs/plugin-vue": "^5.2.3",
+    "@vueuse/core": "^13.0.0",
+    "echarts": "^5.6.0",
+    "element-plus": "^2.9.7",
+    "prettier": "3.5.3",
+    "unocss": "^66.1.0-beta.8",
+    "unplugin-auto-import": "^19.1.2",
+    "unplugin-vue-components": "^28.4.1",
+    "vite": "^6.2.4",
+    "vite-plugin-vue-devtools": "^7.7.2"
+  }
+}

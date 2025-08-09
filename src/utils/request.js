@@ -44,7 +44,7 @@ service.interceptors.response.use(
       } else {
         ElMessage.error(res.msg || '请求失败')
       }
-      return Promise.reject(res)
+      return res
     }
     return res
   },
@@ -53,6 +53,7 @@ service.interceptors.response.use(
     if (error.response) {
       switch (error.response.status) {
         case 401:
+          console.log("登录没有了。。。。。。。。。。。。。。")
           handleLogout()
           break
         case 403:
@@ -70,7 +71,8 @@ service.interceptors.response.use(
     } else {
       ElMessage.error('网络连接失败')
     }
-    return Promise.reject(error)
+    // return Promise.reject(error)
+    return error
   }
 )
 
@@ -84,9 +86,10 @@ const handleLogout = () => {
   // 清除本地存储的信息
   localStorage.removeItem('Admin-Token')
   localStorage.removeItem('userInfo')
-
+console.log("返回登录")
   // 如果不是登录页面，则跳转到登录页
   if (router.currentRoute.value.path !== '/login') {
+    console.log("返回登录1")
     // 记录当前页面路径
     const redirect = router.currentRoute.value.fullPath
     
@@ -94,8 +97,14 @@ const handleLogout = () => {
     router.replace({
       path: '/login',
       query: { redirect }
-    }).finally(() => {
+    }).then(() => {
+      console.log("成功跳转到登录页")
       // 重置状态
+      isRefreshing = false
+      requests = []
+    }).catch((err) => {
+      console.error("跳转失败:", err)
+      // 即使跳转失败也要重置状态
       isRefreshing = false
       requests = []
     })

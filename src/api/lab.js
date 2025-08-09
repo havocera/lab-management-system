@@ -60,4 +60,24 @@ export function deleteLab(id) {
     method: 'post',
     data: { id }
   })
+}
+
+// 获取用户列表（用于负责人选择）
+export function getUsers() {
+  return request({
+    url: '/lab/getUsers',
+    method: 'get'
+  })
+}
+
+// 更换实验室负责人
+export function changeManager(labId, managerId) {
+  return request({
+    url: '/lab/changeManager',
+    method: 'post',
+    data: {
+      lab_id: labId,
+      manager_id: managerId
+    }
+  })
 } 

@@ -30,7 +30,7 @@ return [
             // 用户名
             'username'        => 'root',
             // 密码
-            'password'        => 'aielabzyh@661130',
+            'password'        => env('DATABASE.PASSWORD', '222222222222222'),
             // 端口
             'hostport'        => env('DATABASE.HOSTPORT', '3306'),
             // 数据库连接参数

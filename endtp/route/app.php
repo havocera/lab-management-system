@@ -98,5 +98,11 @@ Route::group('dashboard', function () {
     Route::get('pending-reagents', 'Dashboard/pendingReagents');
     Route::post('approve-reagent', 'Dashboard/approveReagent');
     Route::post('reject-reagent', 'Dashboard/rejectReagent');
+    Route::get('equipment-trend', 'Dashboard/equipmentTrend');
+    Route::get('lab-distribution', 'Dashboard/labDistribution');
+    Route::get('recent-activities', 'Dashboard/recentActivities');
+    Route::get('today-overview', 'Dashboard/todayOverview');
+    Route::get('system-status', 'Dashboard/systemStatus');
+    Route::get('usage-trend', 'Dashboard/usageTrend');
 })->middleware('jwt');
 

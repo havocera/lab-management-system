@@ -31,7 +31,7 @@ class Dashboard extends BaseController
             
             // 获取待审批试剂数量
             $pendingReagents = Db::table('reagent_record')
-                ->where('status', "pending")  // 待审批状态
+                ->where('status', 'pending')  // 待审批状态
                 ->count();
             
             // 获取在线用户数量
@@ -40,7 +40,7 @@ class Dashboard extends BaseController
                 ->count();
             
             return json([
-                'code' => 200,
+                'code' => 0,
                 'msg' => '获取成功',
                 'data' => [
                     'todayLabUsage' => $todayLabUsage,
@@ -52,7 +52,8 @@ class Dashboard extends BaseController
         } catch (\Exception $e) {
             return json([
                 'code' => 500,
-                'msg' => '获取统计数据失败：' . $e->getMessage()
+                'msg' => '获取统计数据失败：' . $e->getMessage(),
+                'data' => []
             ]);
         }
     }
@@ -89,14 +90,15 @@ class Dashboard extends BaseController
             }
             
             return json([
-                'code' => 200,
+                'code' => 0,
                 'msg' => '获取成功',
                 'data' => $data
             ]);
         } catch (\Exception $e) {
             return json([
                 'code' => 500,
-                'msg' => '获取今日实验室使用情况失败：' . $e->getMessage()
+                'msg' => '获取今日实验室使用情况失败：' . $e->getMessage(),
+                'data' => []
             ]);
         }
     }
@@ -133,14 +135,15 @@ class Dashboard extends BaseController
             }
             
             return json([
-                'code' => 200,
+                'code' => 0,
                 'msg' => '获取成功',
                 'data' => $data
             ]);
         } catch (\Exception $e) {
             return json([
                 'code' => 500,
-                'msg' => '获取明日预约情况失败：' . $e->getMessage()
+                'msg' => '获取明日预约情况失败：' . $e->getMessage(),
+                'data' => []
             ]);
         }
     }
@@ -156,7 +159,7 @@ class Dashboard extends BaseController
                 ->join('reagent r', 'r.id = ra.reagent_id')
                 // ->join('user u', 'u.id = ra.user_id')
                 ->field('ra.*, r.name as reagent_name, r.unit')
-                ->where('ra.status', 0)  // 待审批状态
+                ->where('ra.status', 'pending')  // 待审批状态
                 ->order('ra.create_time', 'desc')
                 ->select();
                 
@@ -175,14 +178,15 @@ class Dashboard extends BaseController
             }
             
             return json([
-                'code' => 200,
+                'code' => 0,
                 'msg' => '获取成功',
                 'data' => $data
             ]);
         } catch (\Exception $e) {
             return json([
                 'code' => 500,
-                'msg' => '获取待审批试剂申领失败：' . $e->getMessage()
+                'msg' => '获取待审批试剂申领失败：' . $e->getMessage(),
+                'data' => []
             ]);
         }
     }
@@ -215,7 +219,7 @@ class Dashboard extends BaseController
                     ->update();
                     
                 Db::commit();
-                return json(['code' => 200, 'msg' => '审批通过成功']);
+                return json(['code' => 0, 'msg' => '审批通过成功']);
             } catch (\Exception $e) {
                 Db::rollback();
                 throw $e;
@@ -246,7 +250,7 @@ class Dashboard extends BaseController
                     'reject_reason' => $reason
                 ]);
                 
-            return json(['code' => 200, 'msg' => '拒绝成功']);
+            return json(['code' => 0, 'msg' => '拒绝成功']);
         } catch (\Exception $e) {
             return json([
                 'code' => 500,
@@ -341,7 +345,7 @@ class Dashboard extends BaseController
             }
             
             return json([
-                'code' => 200,
+                'code' => 0,
                 'msg' => '获取成功',
                 'data' => [
                     'dates' => $dates,
@@ -352,7 +356,8 @@ class Dashboard extends BaseController
         } catch (\Exception $e) {
             return json([
                 'code' => 500,
-                'msg' => '获取设备使用趋势失败：' . $e->getMessage()
+                'msg' => '获取设备使用趋势失败：' . $e->getMessage(),
+                'data' => []
             ]);
         }
     }
@@ -401,14 +406,15 @@ class Dashboard extends BaseController
             }
             
             return json([
-                'code' => 200,
+                'code' => 0,
                 'msg' => '获取成功',
                 'data' => $data
             ]);
         } catch (\Exception $e) {
             return json([
                 'code' => 500,
-                'msg' => '获取实验室分布失败：' . $e->getMessage()
+                'msg' => '获取实验室分布失败：' . $e->getMessage(),
+                'data' => []
             ]);
         }
     }
@@ -444,14 +450,228 @@ class Dashboard extends BaseController
             }
             
             return json([
-                'code' => 200,
+                'code' => 0,
                 'msg' => '获取成功',
                 'data' => $data
             ]);
         } catch (\Exception $e) {
             return json([
                 'code' => 500,
-                'msg' => '获取最近动态失败：' . $e->getMessage()
+                'msg' => '获取最近动态失败：' . $e->getMessage(),
+                'data' => []
+            ]);
+        }
+    }
+
+    /**
+     * 获取今日概览数据
+     */
+    public function todayOverview()
+    {
+        try {
+            // 已完成任务（今日完成的实验室使用）
+            $completedTasks = Db::table('lab_reservation')
+                ->where('status', 'completed')
+                ->whereDay('end_time', date('Y-m-d'))
+                ->count();
+            
+            // 待处理任务（今日待审批的试剂申请）
+            $pendingTasks = Db::table('reagent_record')
+                ->where('status', 'pending')
+                ->whereDay('create_time', date('Y-m-d'))
+                ->count();
+            
+            // 活跃设备（今日有使用记录的设备）
+            $activeEquipment = Db::table('equipment_record')
+                ->whereDay('create_time', date('Y-m-d'))
+                ->group('equipment_id')
+                ->count();
+            
+            // 系统警报（待维护的设备）
+            $alerts = Db::table('equipment')
+                ->where('status', 'maintenance')
+                ->count();
+            
+            return json([
+                'code' => 0,
+                'msg' => '获取成功',
+                'data' => [
+                    'completedTasks' => $completedTasks,
+                    'pendingTasks' => $pendingTasks,
+                    'activeEquipment' => $activeEquipment,
+                    'alerts' => $alerts
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return json([
+                'code' => 500,
+                'msg' => '获取今日概览失败：' . $e->getMessage(),
+                'data' => []
+            ]);
+        }
+    }
+
+    /**
+     * 获取系统状态
+     */
+    public function systemStatus()
+    {
+        try {
+            // 模拟系统状态数据
+            $cpu = rand(30, 80);
+            $memory = rand(40, 85);
+            $disk = rand(25, 70);
+            $network = 'normal';
+            
+            // 也可以通过系统命令获取真实数据
+            // $cpu = sys_getloadavg()[0] * 100;
+            // $memory = memory_get_usage(true) / memory_get_peak_usage(true) * 100;
+            
+            return json([
+                'code' => 0,
+                'msg' => '获取成功',
+                'data' => [
+                    'cpu' => $cpu,
+                    'memory' => $memory,
+                    'disk' => $disk,
+                    'network' => $network
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return json([
+                'code' => 500,
+                'msg' => '获取系统状态失败：' . $e->getMessage(),
+                'data' => []
+            ]);
+        }
+    }
+
+    /**
+     * 获取使用趋势图表数据
+     */
+    public function usageTrend()
+    {
+        try {
+            $period = input('period', 'today');
+            $data = [];
+            
+            switch ($period) {
+                case 'today':
+                    // 今日每4小时的数据
+                    for ($i = 0; $i < 24; $i += 4) {
+                        $hourStart = sprintf('%02d:00:00', $i);
+                        $hourEnd = sprintf('%02d:00:00', $i + 4);
+                        $today = date('Y-m-d');
+                        
+                        // 实验室使用数量
+                        $labUsage = Db::table('lab_reservation')
+                            ->where('status', 'approved')
+                            ->where('start_time', '>=', $today . ' ' . $hourStart)
+                            ->where('start_time', '<', $today . ' ' . $hourEnd)
+                            ->count();
+                        
+                        // 设备使用数量
+                        $equipmentUsage = Db::table('equipment_record')
+                            ->where('status', 'in', [1, 2])
+                            ->where('create_time', '>=', $today . ' ' . $hourStart)
+                            ->where('create_time', '<', $today . ' ' . $hourEnd)
+                            ->count();
+                        
+                        // 试剂消耗数量
+                        $reagentConsumption = Db::table('reagent_record')
+                            ->where('status', 'completed')
+                            ->where('create_time', '>=', $today . ' ' . $hourStart)
+                            ->where('create_time', '<', $today . ' ' . $hourEnd)
+                            ->count();
+                        
+                        $data[] = [
+                            'time' => sprintf('%02d:00', $i),
+                            'labUsage' => (int)$labUsage,
+                            'equipmentUsage' => (int)$equipmentUsage,
+                            'reagentConsumption' => (int)$reagentConsumption
+                        ];
+                    }
+                    break;
+                    
+                case 'week':
+                    // 本周每天的数据
+                    for ($i = 6; $i >= 0; $i--) {
+                        $date = date('Y-m-d', strtotime("-{$i} days"));
+                        
+                        // 实验室使用数量
+                        $labUsage = Db::table('lab_reservation')
+                            ->where('status', 'approved')
+                            ->whereDay('start_time', $date)
+                            ->count();
+                        
+                        // 设备使用数量
+                        $equipmentUsage = Db::table('equipment_record')
+                            ->where('status', 'in', [1, 2])
+                            ->whereDay('create_time', $date)
+                            ->count();
+                        
+                        // 试剂消耗数量
+                        $reagentConsumption = Db::table('reagent_record')
+                            ->where('status', 'completed')
+                            ->whereDay('create_time', $date)
+                            ->count();
+                        
+                        $data[] = [
+                            'time' => date('m-d', strtotime($date)),
+                            'labUsage' => (int)$labUsage,
+                            'equipmentUsage' => (int)$equipmentUsage,
+                            'reagentConsumption' => (int)$reagentConsumption
+                        ];
+                    }
+                    break;
+                    
+                case 'month':
+                    // 本月每周的数据
+                    for ($i = 3; $i >= 0; $i--) {
+                        $weekStart = date('Y-m-d', strtotime("-{$i} weeks Monday"));
+                        $weekEnd = date('Y-m-d', strtotime("-{$i} weeks Sunday"));
+                        
+                        // 实验室使用数量
+                        $labUsage = Db::table('lab_reservation')
+                            ->where('status', 'approved')
+                            ->where('start_time', '>=', $weekStart . ' 00:00:00')
+                            ->where('start_time', '<=', $weekEnd . ' 23:59:59')
+                            ->count();
+                        
+                        // 设备使用数量
+                        $equipmentUsage = Db::table('equipment_record')
+                            ->where('status', 'in', [1, 2])
+                            ->where('create_time', '>=', $weekStart . ' 00:00:00')
+                            ->where('create_time', '<=', $weekEnd . ' 23:59:59')
+                            ->count();
+                        
+                        // 试剂消耗数量
+                        $reagentConsumption = Db::table('reagent_record')
+                            ->where('status', 'completed')
+                            ->where('create_time', '>=', $weekStart . ' 00:00:00')
+                            ->where('create_time', '<=', $weekEnd . ' 23:59:59')
+                            ->count();
+                        
+                        $data[] = [
+                            'time' => '第' . (4 - $i) . '周',
+                            'labUsage' => (int)$labUsage,
+                            'equipmentUsage' => (int)$equipmentUsage,
+                            'reagentConsumption' => (int)$reagentConsumption
+                        ];
+                    }
+                    break;
+            }
+            
+            return json([
+                'code' => 0,
+                'msg' => '获取成功',
+                'data' => $data
+            ]);
+        } catch (\Exception $e) {
+            return json([
+                'code' => 500,
+                'msg' => '获取使用趋势失败：' . $e->getMessage(),
+                'data' => []
             ]);
         }
     }

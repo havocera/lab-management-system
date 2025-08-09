@@ -182,11 +182,11 @@ class Reservation extends BaseController
         if (empty($id)) {
             return json(['code' => 1, 'msg' => '参数错误']);
         }
-
+        // var_dump($request->user);
         // 检查预约是否存在且属于当前用户
         $reservation = Db::name('lab_reservation')
             ->where('id', $id)
-            ->where('user_id', $request->user->id)
+            ->where('user_id', $request->user->uid)
             ->find();
 
         if (!$reservation) {

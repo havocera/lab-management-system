@@ -75,4 +75,29 @@ export function getRecentActivities(params) {
     method: 'get',
     params
   })
+}
+
+// 获取今日概览数据
+export function getTodayOverview() {
+  return request({
+    url: '/dashboard/today-overview',
+    method: 'get'
+  })
+}
+
+// 获取系统状态
+export function getSystemStatus() {
+  return request({
+    url: '/dashboard/system-status',
+    method: 'get'
+  })
+}
+
+// 获取使用趋势图表数据
+export function getUsageTrend(params) {
+  return request({
+    url: '/dashboard/usage-trend',
+    method: 'get',
+    params
+  })
 } 

@@ -21,8 +21,8 @@
         <el-table-column prop="capacity" label="容量" width="100" />
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'active' ? 'success' : 'danger'">
-              {{ row.status === 'active' ? '可用' : '不可用' }}
+            <el-tag :type="row.status === '0' ? 'success' : 'danger'">
+              {{ row.status === '0' ? '可用' : '不可用' }}
             </el-tag>
           </template>
         </el-table-column>
@@ -283,7 +283,7 @@ const getList = async () => {
     loading.value = true
     const res = await getLabList()
     if (res.code === 0 && res.data && Array.isArray(res.data.list)) {
-      labList.value = res.data.list.filter(lab => lab.status === 'active')
+      labList.value = res.data.list.filter(lab => lab.status === '0')
     } else {
       labList.value = []
       console.warn('实验室数据格式不正确')

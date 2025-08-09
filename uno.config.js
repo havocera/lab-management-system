@@ -1,10 +1,40 @@
 import { defineConfig, presetUno, presetAttributify, presetIcons } from 'unocss'
+import carbon from '@iconify-json/carbon'
+import iconCarbon from '@iconify-json/carbon/icons.json'
+function generateIconClasses(iconCollections) {
+  const iconClasses = []
+  
+  Object.entries(iconCollections).forEach(([collectionName, collection]) => {
+    if (collection.icons) {
+      Object.keys(collection.icons).forEach(iconName => {
+        iconClasses.push(`i-carbon-${iconName}`)
+      })
+    }
+  })
+  
+  return iconClasses
+}
 
+const iconCollections = {
+  iconCarbon
+}
+
+const allIconClasses = generateIconClasses(iconCollections)
 export default defineConfig({
   presets: [
     presetUno(),
     presetAttributify(),
-    presetIcons(),
+    presetIcons({
+      collections: {
+        carbon,
+      },
+      extraProperties: {
+        'display': 'inline-block',
+        'vertical-align': 'middle',
+      },
+      scale: 1.2,
+      warn: true,
+    }),
   ],
   theme: {
     colors: {
@@ -30,5 +60,21 @@ export default defineConfig({
     'text-primary': 'text-primary-500',
     'bg-primary': 'bg-primary-500',
     'border-primary': 'border-primary-500',
-  }
+  },
+  safelist:[
+    'i-carbon-refresh',
+     'i-carbon-add',
+    'i-carbon-search',
+    'i-carbon-reset',
+    'i-carbon-edit',
+    'i-carbon-delete',
+    'i-carbon-view',
+    'i-carbon-dashboard',
+    'i-carbon-home',
+    'i-carbon-menu',
+    'i-carbon-user',
+    'i-carbon-settings',
+    'i-carbon-account',
+    'i-carbon-assembly'
+  ]
 }) 

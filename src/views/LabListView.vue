@@ -20,26 +20,19 @@
             @keyup.enter="handleSearch"
           />
         </el-form-item>
-        <el-form-item label="房间号">
+        <el-form-item label="位置">
           <el-input
-            v-model="searchForm.room_no"
-            placeholder="请输入房间号"
+            v-model="searchForm.location"
+            placeholder="请输入位置"
             clearable
             @keyup.enter="handleSearch"
           />
         </el-form-item>
-        <el-form-item label="实验室类型"  style="width: 240px">
-          <el-select v-model="searchForm.type" placeholder="请选择类型" clearable>
-            <el-option label="物理实验室" value="physics" />
-            <el-option label="化学实验室" value="chemistry" />
-            <el-option label="生物实验室" value="biology" />
-            <el-option label="计算机实验室" value="computer" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="使用状态"  style="width: 240px">
+        <el-form-item label="状态"  style="width: 240px">
           <el-select v-model="searchForm.status" placeholder="请选择状态" clearable>
-            <el-option label="可用" value="active" />
-            <el-option label="不可用" value="inactive" />
+            <el-option label="空闲" :value="0" />
+            <el-option label="使用中" :value="1" />
+            <el-option label="维护中" :value="2" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -75,21 +68,24 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="room_no" label="房间号" width="120" />
-        <el-table-column prop="type" label="类型" width="120">
-          <template #default="{ row }">
-            <el-tag :type="getTypeTag(row.type)">{{ getTypeName(row.type) }}</el-tag>
-          </template>
-        </el-table-column>
+        <el-table-column prop="location" label="位置" width="150" />
         <el-table-column prop="capacity" label="容量" width="100" />
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="getStatusTag(row.status)">{{ getStatusName(row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="manager" label="负责人" width="120" />
-        <el-table-column prop="contact" label="联系方式" width="150" />
-        <el-table-column prop="create_time" label="创建时间" width="180" />
+        <el-table-column prop="manager_name" label="负责人" width="120">
+          <template #default="{ row }">
+            <span v-if="row.manager_name">{{ row.manager_name }}</span>
+            <el-tag v-else type="info">未设置</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="create_time" label="创建时间" width="180">
+          <template #default="{ row }">
+            {{ row.create_time }}
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button-group>
@@ -136,35 +132,38 @@
         <el-form-item label="实验室名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入实验室名称" />
         </el-form-item>
-        <el-form-item label="房间号" prop="room_no">
-          <el-input v-model="form.room_no" placeholder="请输入房间号" />
-        </el-form-item>
-        <el-form-item label="实验室类型" prop="type">
-          <el-select v-model="form.type" placeholder="请选择类型">
-            <el-option label="物理实验室" value="physics" />
-            <el-option label="化学实验室" value="chemistry" />
-            <el-option label="生物实验室" value="biology" />
-            <el-option label="计算机实验室" value="computer" />
-          </el-select>
+        <el-form-item label="位置" prop="location">
+          <el-input v-model="form.location" placeholder="请输入位置" />
         </el-form-item>
         <el-form-item label="容量" prop="capacity">
           <el-input-number v-model="form.capacity" :min="1" :max="200" />
         </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-select v-model="form.status" placeholder="请选择状态">
-            <el-option label="可用" value="active" />
-            <el-option label="不可用" value="inactive" />
+            <el-option label="空闲" value="0" />
+            <el-option label="使用中" value="1" />
+            <el-option label="维护中" value="2" />
           </el-select>
         </el-form-item>
-        <el-form-item label="负责人" prop="manager">
-          <el-input v-model="form.manager" placeholder="请输入负责人姓名" />
+        <el-form-item label="负责人" prop="manager_id">
+          <el-select 
+            v-model="form.manager_id" 
+            placeholder="请选择负责人" 
+            filterable
+            clearable
+            @focus="loadUsers"
+          >
+            <el-option
+              v-for="user in userList"
+              :key="user.id"
+              :label="`${user.name} (${user.email})`"
+              :value="user.id"
+            />
+          </el-select>
         </el-form-item>
-        <el-form-item label="联系方式" prop="contact">
-          <el-input v-model="form.contact" placeholder="请输入联系方式" />
-        </el-form-item>
-        <el-form-item label="备注" prop="remark">
+        <el-form-item label="备注" prop="description">
           <el-input
-            v-model="form.remark"
+            v-model="form.description"
             type="textarea"
             :rows="3"
             placeholder="请输入备注信息"
@@ -184,13 +183,12 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getLabList, addLab, updateLab, deleteLab } from '@/api/lab'
+import { getLabList, addLab, updateLab, deleteLab, getUsers } from '@/api/lab'
 
 // 搜索表单
 const searchForm = reactive({
   name: '',
-  room_no: '',
-  type: '',
+  location: '',
   status: ''
 })
 
@@ -199,9 +197,8 @@ const loading = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
-const labList = ref([
-  
-])
+const labList = ref([])
+const userList = ref([])
 
 // 表单数据
 const dialogVisible = ref(false)
@@ -210,13 +207,11 @@ const submitLoading = ref(false)
 const formRef = ref(null)
 const form = reactive({
   name: '',
-  room_no: '',
-  type: '',
-  capacity: 50,
-  status: 'active',
-  manager: '',
-  contact: '',
-  remark: ''
+  location: '',
+  capacity: 30,
+  status: 0,
+  manager_id: '',
+  description: ''
 })
 
 // 表单校验规则
@@ -225,63 +220,53 @@ const rules = {
     { required: true, message: '请输入实验室名称', trigger: 'blur' },
     { min: 3, max: 50, message: '长度在 3 到 50 个字符', trigger: 'blur' }
   ],
-  room_no: [
-    { required: true, message: '请输入房间号', trigger: 'blur' },
-    { pattern: /^[A-Z]\d{3}$/, message: '房间号格式为：大写字母+3位数字，如：A101', trigger: 'blur' }
+  location: [
+    { required: true, message: '请输入位置', trigger: 'blur' },
+    { max: 200, message: '位置不能超过200个字符', trigger: 'blur' }
   ],
-  type: [
-    { required: true, message: '请选择实验室类型', trigger: 'change' }
-  ],
-  capacity: [
-    { required: true, message: '请输入容量', trigger: 'blur' }
-  ],
-  status: [
-    { required: true, message: '请选择状态', trigger: 'change' }
-  ],
-  manager: [
-    { required: true, message: '请输入负责人姓名', trigger: 'blur' }
-  ],
-  contact: [
-    { required: true, message: '请输入联系方式', trigger: 'blur' },
-    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号码', trigger: 'blur' }
+  manager_id: [
+    { required: false, message: '请选择负责人', trigger: 'change' }
   ]
 }
 
-// 类型和状态的标签样式
-const getTypeTag = (type) => {
-  const map = {
-    physics: '',
-    chemistry: 'success',
-    biology: 'warning',
-    computer: 'info'
-  }
-  return map[type]
-}
-
-const getTypeName = (type) => {
-  const map = {
-    physics: '物理实验室',
-    chemistry: '化学实验室',
-    biology: '生物实验室',
-    computer: '计算机实验室'
-  }
-  return map[type]
-}
-
+// 获取状态标签样式
 const getStatusTag = (status) => {
   const map = {
-    active: 'success',
-    inactive: 'danger'
+    0: 'success',  // 空闲
+    1: 'warning',  // 使用中
+    2: 'danger'    // 维护中
   }
   return map[status]
 }
 
 const getStatusName = (status) => {
   const map = {
-    active: '可用',
-    inactive: '不可用'
+    0: '空闲',
+    1: '使用中',
+    2: '维护中'
   }
   return map[status]
+}
+
+// 获取用户列表
+const loadUsers = async () => {
+  if (userList.value.length > 0) return
+  
+  try {
+    console.log('开始加载用户列表...')
+    const res = await getUsers()
+    console.log('用户列表返回结果:', res)
+    if (res.code === 0) {
+      userList.value = res.data || []
+      console.log('用户列表加载成功:', userList.value)
+    } else {
+      console.error('获取用户列表失败:', res.msg)
+      ElMessage.error('获取用户列表失败: ' + res.msg)
+    }
+  } catch (error) {
+    console.error('获取用户列表失败：', error)
+    ElMessage.error('获取用户列表失败')
+  }
 }
 
 // 搜索和重置
@@ -292,8 +277,7 @@ const handleSearch = () => {
 
 const handleReset = () => {
   searchForm.name = ''
-  searchForm.room_no = ''
-  searchForm.type = ''
+  searchForm.location = ''
   searchForm.status = ''
   handleSearch()
 }
@@ -317,9 +301,7 @@ const fetchData = async () => {
       page: currentPage.value,
       limit: pageSize.value,
       name: searchForm.name,
-      room_no: searchForm.room_no,
-      type: searchForm.type,
-      status: searchForm.status
+      location: searchForm.location
     }
     
     const res = await getLabList(params)
@@ -340,13 +322,11 @@ const handleAdd = () => {
   dialogType.value = 'add'
   dialogVisible.value = true
   form.name = ''
-  form.room_no = ''
-  form.type = ''
-  form.capacity = 50
-  form.status = 'active'
-  form.manager = ''
-  form.contact = ''
-  form.remark = ''
+  form.location = ''
+  form.capacity = 30
+  form.status = 0
+  form.manager_id = ''
+  form.description = ''
 }
 
 // 编辑
@@ -393,13 +373,11 @@ const handleSubmit = async () => {
     
     const submitData = {
       name: form.name,
-      room_no: form.room_no,
-      type: form.type,
+      location: form.location,
       capacity: form.capacity,
       status: form.status,
-      manager: form.manager,
-      contact: form.contact,
-      description: form.remark
+      manager_id: form.manager_id || null,
+      description: form.description
     }
     
     if (dialogType.value === 'add') {
@@ -421,6 +399,7 @@ const handleSubmit = async () => {
 
 // 初始化
 fetchData()
+loadUsers()
 </script>
 
 <style scoped>

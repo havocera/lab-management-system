@@ -11,7 +11,7 @@
  Target Server Version : 50736 (5.7.36)
  File Encoding         : 65001
 
- Date: 08/04/2025 14:29:37
+ Date: 10/08/2025 11:10:57
 */
 
 SET NAMES utf8mb4;
@@ -45,6 +45,28 @@ CREATE TABLE `equipment`  (
 ) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
+-- Table structure for equipment_record
+-- ----------------------------
+DROP TABLE IF EXISTS `equipment_record`;
+CREATE TABLE `equipment_record`  (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `equipment_id` int(11) NOT NULL COMMENT '设备ID',
+  `user_id` int(11) NOT NULL COMMENT '用户ID',
+  `start_time` datetime NOT NULL COMMENT '开始使用时间',
+  `end_time` datetime NULL DEFAULT NULL COMMENT '结束使用时间',
+  `purpose` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '使用目的',
+  `status` tinyint(1) NULL DEFAULT 0 COMMENT '状态：0-申请中，1-使用中，2-已完成，3-已取消',
+  `remark` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '备注',
+  `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_equipment_id`(`equipment_id`) USING BTREE,
+  INDEX `idx_user_id`(`user_id`) USING BTREE,
+  INDEX `idx_status`(`status`) USING BTREE,
+  INDEX `idx_create_time`(`create_time`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 12 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '设备使用记录表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
 -- Table structure for lab
 -- ----------------------------
 DROP TABLE IF EXISTS `lab`;
@@ -56,10 +78,12 @@ CREATE TABLE `lab`  (
   `capacity` int(11) NOT NULL DEFAULT 0 COMMENT '容纳人数',
   `manager` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '管理员',
   `contact` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '联系电话',
-  `status` enum('idle','inuse','maintenance','active','inactive') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT 'active' COMMENT '状态：空闲/使用中/维护中',
+  `status` enum('0','1','2','active','inactive') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT 'active' COMMENT '状态：空闲/使用中/维护中',
   `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL COMMENT '描述',
   `create_time` datetime NOT NULL COMMENT '创建时间',
   `update_time` datetime NULL DEFAULT NULL COMMENT '更新时间',
+  `manager_id` int(11) NULL DEFAULT NULL,
+  `location` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `room_no`(`room_no`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
@@ -82,7 +106,7 @@ CREATE TABLE `lab_reservation`  (
   INDEX `idx_lab_id`(`lab_id`) USING BTREE,
   INDEX `idx_user_id`(`user_id`) USING BTREE,
   INDEX `idx_status`(`status`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 15 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for login_log
@@ -98,7 +122,7 @@ CREATE TABLE `login_log`  (
   `message` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '登录消息',
   `create_time` datetime NOT NULL COMMENT '创建时间',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 74 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 89 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for migrations
@@ -252,7 +276,7 @@ CREATE TABLE `user`  (
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `username`(`username`) USING BTREE,
   UNIQUE INDEX `phone`(`phone`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 6 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for user_role
@@ -266,5 +290,58 @@ CREATE TABLE `user_role`  (
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `user_id`(`user_id`, `role_id`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 7 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for maintenance_record
+-- ----------------------------
+DROP TABLE IF EXISTS `maintenance_record`;
+CREATE TABLE `maintenance_record` (
+  `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `equipment_id` int(11) NOT NULL COMMENT '设备ID',
+  `type` enum('routine','preventive','corrective','emergency') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'routine' COMMENT '维护类型：定期维护/预防性维护/故障维修/紧急维修',
+  `priority` enum('low','medium','high','urgent') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'medium' COMMENT '优先级：低/中/高/紧急',
+  `status` enum('pending','in_progress','completed','cancelled') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending' COMMENT '状态：待维护/维护中/已完成/已取消',
+  `scheduled_date` date NOT NULL COMMENT '计划维护日期',
+  `actual_date` date NULL DEFAULT NULL COMMENT '实际维护日期',
+  `technician` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '维护人员',
+  `cost` decimal(10, 2) NULL DEFAULT 0.00 COMMENT '维护费用',
+  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '维护内容描述',
+  `notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL COMMENT '备注信息',
+  `create_time` datetime NOT NULL COMMENT '创建时间',
+  `update_time` datetime NULL DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `equipment_id`(`equipment_id`) USING BTREE,
+  INDEX `status`(`status`) USING BTREE,
+  INDEX `priority`(`priority`) USING BTREE,
+  INDEX `scheduled_date`(`scheduled_date`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '设备维护记录表' ROW_FORMAT = Dynamic;
+
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- ----------------------------
+-- Table structure for lab_usage_record
+-- ----------------------------
+DROP TABLE IF EXISTS `lab_usage_record`;
+CREATE TABLE `lab_usage_record` (
+  `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `reservation_id` int(11) NOT NULL COMMENT '预约记录ID',
+  `lab_id` int(11) NOT NULL COMMENT '实验室ID',
+  `user_id` int(11) NOT NULL COMMENT '用户ID',
+  `power_off` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否断电：0-否，1-是',
+  `air_conditioning_off` tinyint(1) NOT NULL DEFAULT 0 COMMENT '空调是否关闭：0-否，1-是',
+  `hygiene_completed` tinyint(1) NOT NULL DEFAULT 0 COMMENT '卫生是否完成：0-否，1-是',
+  `equipment_normal` tinyint(1) NOT NULL DEFAULT 1 COMMENT '设备是否正常：0-否，1-是',
+  `equipment_issues` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL COMMENT '设备问题描述',
+  `other_notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL COMMENT '其他备注',
+  `actual_start_time` datetime NULL DEFAULT NULL COMMENT '实际开始使用时间',
+  `actual_end_time` datetime NULL DEFAULT NULL COMMENT '实际结束使用时间',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `reservation_id`(`reservation_id`) USING BTREE,
+  INDEX `lab_id`(`lab_id`) USING BTREE,
+  INDEX `user_id`(`user_id`) USING BTREE,
+  INDEX `create_time`(`create_time`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '实验室使用记录表' ROW_FORMAT = Dynamic;
 
 SET FOREIGN_KEY_CHECKS = 1;

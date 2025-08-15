@@ -5,9 +5,66 @@
 [![Element Plus](https://img.shields.io/badge/Element%20Plus-2.9.7-409EFF.svg?style=flat&logo=element)](https://element-plus.org/)
 [![UnoCSS](https://img.shields.io/badge/UnoCSS-0.66.1-333333.svg?style=flat&logo=unocss)](https://unocss.dev/)
 [![ThinkPHP](https://img.shields.io/badge/ThinkPHP-8.0-FF6B35.svg?style=flat&logo=php)](https://thinkphp.cn/)
+[![Docker](https://img.shields.io/badge/Docker-20.10+-2496ED.svg?style=flat&logo=docker)](https://docker.com/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> 一个基于 Vue 3 + ThinkPHP 8 的现代化实验室管理系统，提供设备管理、试剂管理、实验室预约等功能。
+> 一个基于 Vue 3 + ThinkPHP 8 的现代化实验室管理系统，支持Docker一键部署，提供设备管理、试剂管理、实验室预约等功能。
+
+## 🚀 一键部署 (推荐)
+
+### 系统要求
+- Docker 20.10+
+- Docker Compose 2.0+
+- 2GB+ 可用内存
+- 5GB+ 可用磁盘空间
+
+### Linux/macOS 部署
+```bash
+# 克隆或下载项目
+cd labmanagefron
+
+# 运行一键部署脚本
+chmod +x deploy.sh
+./deploy.sh
+```
+
+### Windows 部署
+```cmd
+# 在项目根目录下运行
+deploy.bat
+```
+
+### 部署管理命令
+```bash
+# 查看帮助
+./deploy.sh help
+
+# 查看服务状态
+./deploy.sh status
+
+# 查看服务日志
+./deploy.sh logs
+
+# 重启服务
+./deploy.sh restart
+
+# 停止服务
+./deploy.sh stop
+
+# 清理所有容器和镜像
+./deploy.sh clean
+```
+
+### 访问地址
+- **前端应用**: http://localhost
+- **后端API**: http://localhost:8080
+- **数据库**: localhost:3306
+
+### 默认账户
+- **用户名**: admin
+- **密码**: password
+
+⚠️ **安全提示**: 首次登录后请立即修改默认密码！
 
 ## ✨ 功能特性
 

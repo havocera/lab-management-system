@@ -1,56 +1,136 @@
 <template>
-  <div class="space-y-4">
-    <!-- 页面标题和操作按钮 -->
-    <div class="flex items-center justify-between">
-      <h2 class="text-2xl font-medium">试剂管理</h2>
-      <el-button type="primary" @click="handleAdd">
-        <div class="i-carbon-add mr-1" />
-        新增试剂
-      </el-button>
+  <div class="reagent-management">
+    <!-- 页面头部 -->
+    <div class="page-header">
+      <div class="header-content">
+        <div class="title-section">
+          <div class="i-carbon-chemistry text-3xl text-purple-600" />
+          <div>
+            <h1 class="page-title">试剂管理</h1>
+            <p class="page-subtitle">管理和维护实验室化学试剂库存</p>
+          </div>
+        </div>
+        <el-button type="primary" size="large" @click="handleAdd" class="add-btn">
+          <div class="i-carbon-add mr-2" />
+          新增试剂
+        </el-button>
+      </div>
     </div>
 
-    <!-- 搜索和筛选 -->
-    <el-card>
-      <el-form :model="searchForm" inline>
-        <el-form-item label="试剂名称">
+    <!-- 统计卡片 -->
+    <div class="stats-grid">
+      <div class="stat-card total">
+        <div class="stat-icon">
+          <div class="i-carbon-chemistry" />
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">试剂总数</div>
+          <div class="stat-value">{{ statistics.total }}</div>
+        </div>
+      </div>
+      <div class="stat-card normal">
+        <div class="stat-icon">
+          <div class="i-carbon-checkmark-filled" />
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">库存充足</div>
+          <div class="stat-value">{{ statistics.sufficient }}</div>
+        </div>
+      </div>
+      <div class="stat-card low">
+        <div class="stat-icon">
+          <div class="i-carbon-warning-filled" />
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">库存不足</div>
+          <div class="stat-value">{{ statistics.insufficient }}</div>
+        </div>
+      </div>
+      <div class="stat-card danger">
+        <div class="stat-icon">
+          <div class="i-carbon-warning-hex-filled" />
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">危险试剂</div>
+          <div class="stat-value">{{ statistics.dangerous }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 搜索区域 -->
+    <el-card class="search-card">
+      <template #header>
+        <div class="card-header">
+          <div class="i-carbon-search mr-2" />
+          <span>搜索筛选</span>
+        </div>
+      </template>
+      <el-form :model="searchForm" inline class="search-form">
+        <el-form-item>
           <el-input
             v-model="searchForm.name"
             placeholder="请输入试剂名称"
             clearable
             @keyup.enter="handleSearch"
-          />
+            class="search-input"
+          >
+            <template #prefix>
+              <div class="i-carbon-chemistry text-gray-400" />
+            </template>
+          </el-input>
         </el-form-item>
-        <el-form-item label="试剂编号">
+        <el-form-item>
           <el-input
             v-model="searchForm.code"
             placeholder="请输入试剂编号"
             clearable
             @keyup.enter="handleSearch"
-          />
+            class="search-input"
+          >
+            <template #prefix>
+              <div class="i-carbon-hashtag text-gray-400" />
+            </template>
+          </el-input>
         </el-form-item>
-        <el-form-item label="所属实验室 " style="width: 240px">
-          <el-select v-model="searchForm.labId" placeholder="请选择实验室" clearable>
+        <el-form-item>
+          <el-select 
+            v-model="searchForm.labId" 
+            placeholder="请选择实验室" 
+            clearable
+            class="search-select"
+          >
+            <template #prefix>
+              <div class="i-carbon-chemistry text-gray-400" />
+            </template>
             <el-option
               v-for="lab in labOptions"
               :key="lab.id"
-              :label="lab.name" 
+              :label="lab.name"
               :value="lab.id"
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="危险等级" style="width: 240px">
-          <el-select v-model="searchForm.dangerLevel" placeholder="请选择危险等级" clearable>
+        <el-form-item>
+          <el-select 
+            v-model="searchForm.dangerLevel" 
+            placeholder="请选择危险等级" 
+            clearable
+            class="search-select"
+          >
+            <template #prefix>
+              <div class="i-carbon-warning-hex text-gray-400" />
+            </template>
             <el-option label="低危" value="low" />
             <el-option label="中危" value="medium" />
             <el-option label="高危" value="high" />
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">
+          <el-button type="primary" @click="handleSearch" class="search-btn">
             <div class="i-carbon-search mr-1" />
             搜索
           </el-button>
-          <el-button @click="handleReset">
+          <el-button @click="handleReset" class="reset-btn">
             <div class="i-carbon-reset mr-1" />
             重置
           </el-button>
@@ -59,83 +139,119 @@
     </el-card>
 
     <!-- 试剂列表 -->
-    <el-card>
+    <el-card class="table-card">
+      <template #header>
+        <div class="card-header">
+          <div class="i-carbon-list mr-2" />
+          <span>试剂列表</span>
+          <div class="table-actions">
+            <el-button text size="small" @click="fetchData">
+              <div class="i-carbon-renew mr-1" />
+              刷新
+            </el-button>
+          </div>
+        </div>
+      </template>
       <el-table
         v-loading="loading"
         :data="reagentList"
-        border
         stripe
-        style="width: 100%"
+        class="reagent-table"
       >
         <el-table-column type="selection" width="55" />
-        <el-table-column prop="name" label="试剂名称" min-width="180">
+        <el-table-column prop="name" label="试剂名称" min-width="200">
           <template #default="{ row }">
-            <div class="flex items-center">
+            <div class="reagent-item">
               <el-image
                 :src="row.image"
-                class="w-8 h-8 mr-2 rounded"
+                class="reagent-image"
                 fit="cover"
                 :preview-src-list="[row.image]"
               >
                 <template #error>
-                  <div class="w-8 h-8 mr-2 rounded bg-gray-200 flex items-center justify-center">
-                    <div class="i-carbon-image text-gray-400" />
+                  <div class="image-placeholder">
+                    <div class="i-carbon-chemistry text-gray-400" />
                   </div>
                 </template>
               </el-image>
-              {{ row.name }}
+              <div class="reagent-info">
+                <div class="reagent-name">{{ row.name }}</div>
+                <div class="reagent-code">{{ row.code }}</div>
+              </div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="code" label="试剂编号" width="120" />
-        <el-table-column label="所属实验室" width="200">
+        <el-table-column label="所属实验室" width="180">
           <template #default="{ row }">
-            {{ row.lab_name }} ({{ row.lab_room_no }})
+            <div class="lab-info">
+              <div class="i-carbon-chemistry text-blue-500 mr-1" />
+              <span>{{ row.lab_name }}</span>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column prop="specification" label="规格" width="120" />
-        <el-table-column prop="stock" label="库存量" width="120">
+        <el-table-column prop="specification" label="规格" width="120">
           <template #default="{ row }">
-            <span :class="{ 'text-red-500': row.stock <= row.min_stock }">
-              {{ row.stock }} {{ row.unit }}
-            </span>
+            <el-tag type="info" size="small" class="spec-tag">
+              {{ row.specification }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="stock" label="库存量" width="120" align="right">
+          <template #default="{ row }">
+            <div class="stock-display" :class="{ 'stock-low': row.stock <= (row.min_stock || 10) }">
+              <div class="stock-amount">{{ row.stock }} {{ row.unit }}</div>
+              <div class="stock-status" v-if="row.stock <= (row.min_stock || 10)">
+                <div class="i-carbon-warning text-red-500" />
+                库存不足
+              </div>
+            </div>
           </template>
         </el-table-column>
         <el-table-column prop="dangerLevel" label="危险等级" width="100">
           <template #default="{ row }">
-            <el-tag :type="getDangerLevelTag(row.danger_level)">
+            <el-tag 
+              :type="getDangerLevelTag(row.danger_level)" 
+              :class="`danger-${row.danger_level}`"
+              size="small"
+            >
               {{ getDangerLevelName(row.danger_level) }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="expiryDate" label="有效期至" width="120">
           <template #default="{ row }">
-            <span :class="{ 'text-red-500': isExpiringSoon(row.expiry_date) }">
+            <div class="expiry-display" :class="{ 'expiry-warning': isExpiringSoon(row.expiry_date) }">
+              <div v-if="isExpiringSoon(row.expiry_date)" class="i-carbon-warning text-orange-500 mr-1" />
               {{ row.expiry_date }}
-            </span>
+            </div>
           </template>
         </el-table-column>
         <el-table-column prop="manufacturer" label="生产厂商" width="150" />
         <el-table-column prop="keeper" label="保管人" width="120" />
-        <el-table-column label="操作" width="280" fixed="right">
+        <el-table-column label="操作" width="300" fixed="right">
           <template #default="{ row }">
-            <el-button-group>
-              <el-button type="primary" link @click="handleEdit(row)">
+            <div class="action-buttons">
+              <el-button type="primary" link size="small" @click="handleEdit(row)">
+                <div class="i-carbon-edit mr-1" />
                 编辑
               </el-button>
-              <el-button type="primary" link @click="handleView(row)">
+              <el-button type="info" link size="small" @click="handleView(row)">
+                <div class="i-carbon-view mr-1" />
                 查看
               </el-button>
-              <el-button type="success" link @click="handleInOut(row)">
+              <el-button type="success" link size="small" @click="handleInOut(row)">
+                <div class="i-carbon-document-add mr-1" />
                 出入库
               </el-button>
-              <el-button type="warning" link @click="handleRecord(row)">
-                使用记录
+              <el-button type="warning" link size="small" @click="handleRecord(row)">
+                <div class="i-carbon-document mr-1" />
+                记录
               </el-button>
-              <el-button type="danger" link @click="handleDelete(row)">
+              <el-button type="danger" link size="small" @click="handleDelete(row)">
+                <div class="i-carbon-trash-can mr-1" />
                 删除
               </el-button>
-            </el-button-group>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -345,7 +461,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getReagentList,
@@ -357,8 +473,14 @@ import {
 } from '@/api/reagent'
 import { getLabList } from '@/api/lab'
 import { useRouter } from 'vue-router'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
+const userStore = useUserStore()
+
+// 检查用户权限
+const isAdmin = computed(() => userStore.roles.includes('admin'))
+const currentUserId = computed(() => userStore.userInfo?.id)
 
 // 搜索表单
 const searchForm = reactive({
@@ -394,6 +516,21 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const reagentList = ref([])
+
+// 统计数据
+const statistics = computed(() => {
+  const total = reagentList.value.length
+  const sufficient = reagentList.value.filter(item => item.stock > (item.min_stock || 10)).length
+  const insufficient = reagentList.value.filter(item => item.stock <= (item.min_stock || 10)).length
+  const dangerous = reagentList.value.filter(item => item.danger_level === 'high').length
+  
+  return {
+    total,
+    sufficient,
+    insufficient,
+    dangerous
+  }
+})
 
 // 表单数据
 const dialogVisible = ref(false)
@@ -552,6 +689,11 @@ const fetchData = async () => {
       code: searchForm.code,
       lab_id: searchForm.labId,
       danger_level: searchForm.dangerLevel
+    }
+    
+    // 如果不是管理员，只显示用户管理的实验室的试剂
+    if (!isAdmin.value && currentUserId.value) {
+      params.manager_id = currentUserId.value
     }
     
     const res = await getReagentList(params)
@@ -809,25 +951,350 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.el-card {
-  --el-card-padding: 16px;
+/* 整体布局 */
+.reagent-management {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  padding: 24px;
 }
 
+/* 页面头部 */
+.page-header {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.title-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.page-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0;
+}
+
+.page-subtitle {
+  color: #7f8c8d;
+  margin: 4px 0 0 0;
+  font-size: 14px;
+}
+
+.add-btn {
+  height: 44px;
+  padding: 0 24px;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+/* 统计卡片 */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+}
+
+.stat-card.total::before { background: linear-gradient(135deg, #8e44ad 0%, #3498db 100%); }
+.stat-card.normal::before { background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%); }
+.stat-card.low::before { background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); }
+.stat-card.danger::before { background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); }
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.stat-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: white;
+}
+
+.stat-card.total .stat-icon { background: linear-gradient(135deg, #8e44ad 0%, #3498db 100%); }
+.stat-card.normal .stat-icon { background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%); }
+.stat-card.low .stat-icon { background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); }
+.stat-card.danger .stat-icon { background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); }
+
+.stat-content {
+  flex: 1;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #7f8c8d;
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+/* 卡片样式 */
+.search-card, .table-card {
+  border-radius: 12px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  border: none;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.table-actions {
+  margin-left: auto;
+}
+
+/* 搜索表单 */
+.search-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+.search-input, .search-select {
+  width: 200px;
+}
+
+.search-btn {
+  background: linear-gradient(135deg, #8e44ad 0%, #3498db 100%);
+  border: none;
+  border-radius: 8px;
+}
+
+.reset-btn {
+  border-radius: 8px;
+}
+
+/* 表格样式 */
+.reagent-table {
+  :deep(.el-table__header) {
+    background: #f8f9fa;
+  }
+  
+  :deep(.el-table__row:hover) {
+    background: #f8f9ff;
+  }
+}
+
+.reagent-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.reagent-image {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.image-placeholder {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed #d9d9d9;
+}
+
+.reagent-info {
+  flex: 1;
+}
+
+.reagent-name {
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 2px;
+}
+
+.reagent-code {
+  font-size: 12px;
+  color: #7f8c8d;
+  font-family: 'Monaco', 'Consolas', monospace;
+}
+
+.spec-tag {
+  background: #f0f2f5;
+  border: none;
+  font-size: 12px;
+}
+
+.lab-info {
+  display: flex;
+  align-items: center;
+}
+
+.stock-display {
+  text-align: right;
+}
+
+.stock-amount {
+  font-weight: 600;
+  color: #27ae60;
+  font-family: 'Monaco', 'Consolas', monospace;
+}
+
+.stock-display.stock-low .stock-amount {
+  color: #e74c3c;
+}
+
+.stock-status {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  font-size: 12px;
+  color: #e74c3c;
+  margin-top: 2px;
+  gap: 4px;
+}
+
+.danger-low {
+  background: linear-gradient(135deg, #27ae60 20%, #2ecc71 100%);
+  border: none;
+  color: white;
+}
+
+.danger-medium {
+  background: linear-gradient(135deg, #f39c12 20%, #e67e22 100%);
+  border: none;
+  color: white;
+}
+
+.danger-high {
+  background: linear-gradient(135deg, #e74c3c 20%, #c0392b 100%);
+  border: none;
+  color: white;
+}
+
+.expiry-display {
+  display: flex;
+  align-items: center;
+  font-family: 'Monaco', 'Consolas', monospace;
+}
+
+.expiry-display.expiry-warning {
+  color: #e67e22;
+  font-weight: 600;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* 上传组件 */
 .avatar-uploader {
   :deep(.el-upload) {
-    @apply border border-dashed border-gray-300 rounded cursor-pointer overflow-hidden;
+    border: 2px dashed #d9d9d9;
+    border-radius: 8px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s;
     width: 96px;
     height: 96px;
   }
 
   :deep(.el-upload:hover) {
-    @apply border-primary;
+    border-color: #409eff;
+    background: #fafbff;
   }
 }
 
 .avatar-uploader-icon {
-  @apply flex items-center justify-center text-3xl text-gray-400;
+  font-size: 28px;
+  color: #8c939d;
   width: 96px;
   height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .reagent-management {
+    padding: 16px;
+  }
+  
+  .page-header {
+    padding: 16px;
+  }
+  
+  .header-content {
+    flex-direction: column;
+    gap: 16px;
+    text-align: center;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .search-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .search-input, .search-select {
+    width: 100%;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    gap: 4px;
+  }
 }
 </style> 

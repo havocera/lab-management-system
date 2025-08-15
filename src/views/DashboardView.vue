@@ -49,8 +49,8 @@
             <div class="stat-number">{{ statistics.todayLabUsage || 0 }}</div>
             <div class="stat-label">今日实验室使用</div>
             <div class="stat-trend">
-              <div class="i-carbon-trending-up mr-1"></div>
-              <span>+8.5%</span>
+              <!-- <div class="i-carbon-trending-up mr-1"></div>
+              <span>+8.5%</span> -->
             </div>
           </div>
           <div class="stat-bg-icon">
@@ -66,8 +66,8 @@
             <div class="stat-number">{{ statistics.tomorrowReservations || 0 }}</div>
             <div class="stat-label">明日预约</div>
             <div class="stat-trend">
-              <div class="i-carbon-trending-up mr-1"></div>
-              <span>+12.3%</span>
+              <!-- <div class="i-carbon-trending-up mr-1"></div>
+              <span>+12.3%</span> -->
             </div>
           </div>
           <div class="stat-bg-icon">
@@ -83,8 +83,8 @@
             <div class="stat-number">{{ statistics.pendingReagents || 0 }}</div>
             <div class="stat-label">待审批试剂</div>
             <div class="stat-trend">
-              <div class="i-carbon-trending-down mr-1"></div>
-              <span>-2.1%</span>
+              <!-- <div class="i-carbon-trending-down mr-1"></div>
+              <span>-2.1%</span> -->
             </div>
           </div>
           <div class="stat-bg-icon">
@@ -100,8 +100,8 @@
             <div class="stat-number">{{ statistics.onlineUsers || 0 }}</div>
             <div class="stat-label">在线用户</div>
             <div class="stat-trend">
-              <div class="i-carbon-trending-up mr-1"></div>
-              <span>+5.7%</span>
+              <!-- <div class="i-carbon-trending-up mr-1"></div>
+              <span>+5.7%</span> -->
             </div>
           </div>
           <div class="stat-bg-icon">
@@ -288,13 +288,13 @@ import * as echarts from 'echarts'
 import { 
   getDashboardStatistics, 
   getTodayLabUsage, 
-  getTomorrowReservations, 
   getPendingReagents,
   getTodayOverview,
   getSystemStatus,
   getUsageTrend,
   getRecentActivities
 } from '@/api/dashboard'
+import { getTomorrowReservations } from '@/api/reservation'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -367,17 +367,24 @@ const loadDashboardData = async () => {
       statisticsRes,
       todayOverviewRes,
       systemStatusRes,
-      recentActivitiesRes
+      recentActivitiesRes,
+      tomorrowRes
     ] = await Promise.all([
       getDashboardStatistics(),
       getTodayOverview(),
       getSystemStatus(),
-      getRecentActivities()
+      getRecentActivities(),
+      getTomorrowReservations()
     ])
 
     // 更新统计数据
     if (statisticsRes.code === 0) {
       statistics.value = statisticsRes.data
+    }
+    
+    // 更新明日预约数据
+    if (tomorrowRes.code === 0) {
+      statistics.value.tomorrowReservations = tomorrowRes.data.count
     }
 
     // 更新今日概览

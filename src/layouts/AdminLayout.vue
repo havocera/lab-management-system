@@ -84,11 +84,99 @@
         <div class="header-right">
           <!-- 通知图标 -->
           <div class="header-action">
-            <el-badge :value="3" class="notification-badge">
-              <div class="action-btn">
-                <div class="i-carbon-notification action-icon" />
+            <el-popover
+              placement="bottom-end"
+              :width="380"
+              trigger="click"
+              popper-class="notification-popover"
+            >
+              <template #reference>
+                <el-badge :value="totalNotifications" class="notification-badge" :hidden="totalNotifications === 0">
+                  <div class="action-btn">
+                    <div class="i-carbon-notification action-icon" />
+                  </div>
+                </el-badge>
+              </template>
+              
+              <!-- 通知内容 -->
+              <div class="notification-container">
+                <div class="notification-header">
+                  <h3 class="notification-title">待处理事项</h3>
+                  <el-button v-if="totalNotifications > 0" link type="primary" @click="markAllAsRead">全部已读</el-button>
+                </div>
+                
+                <el-tabs v-model="activeTab" class="notification-tabs">
+                  <!-- 实验室预约 -->
+                  <el-tab-pane label="实验室预约" name="reservation">
+                    <el-badge :value="pendingReservations.length" class="tab-badge" />
+                    <div class="notification-list" v-if="pendingReservations.length > 0">
+                      <div
+                        v-for="item in pendingReservations"
+                        :key="item.id"
+                        class="notification-item"
+                        @click="handleNotificationClick('reservation', item)"
+                      >
+                        <div class="notification-icon">
+                          <div class="i-carbon-calendar" />
+                        </div>
+                        <div class="notification-content">
+                          <div class="notification-text">
+                            <strong>{{ item.user_name }}</strong> 申请预约 <strong>{{ item.lab_name }}</strong>
+                          </div>
+                          <div class="notification-time">
+                            {{ item.start_time }} - {{ item.end_time }}
+                          </div>
+                          <div class="notification-meta">
+                            <span class="notification-date">{{ formatTime(item.create_time) }}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div v-else class="empty-state">
+                      <div class="i-carbon-checkmark-outline" />
+                      <p>暂无待审批的预约</p>
+                    </div>
+                  </el-tab-pane>
+                  
+                  <!-- 试剂申领 -->
+                  <el-tab-pane label="试剂申领" name="reagent">
+                    <el-badge :value="pendingReagents.length" class="tab-badge" />
+                    <div class="notification-list" v-if="pendingReagents.length > 0">
+                      <div
+                        v-for="item in pendingReagents"
+                        :key="item.id"
+                        class="notification-item"
+                        @click="handleNotificationClick('reagent', item)"
+                      >
+                        <div class="notification-icon reagent">
+                          <div class="i-carbon-chemistry" />
+                        </div>
+                        <div class="notification-content">
+                          <div class="notification-text">
+                            <strong>{{ item.operator }}</strong> 申请 {{ item.type === 'out' ? '领用' : '入库' }}
+                            <strong>{{ item.reagent_name }}</strong>
+                          </div>
+                          <div class="notification-time">
+                            数量：{{ item.amount }} {{ item.unit }}
+                          </div>
+                          <div class="notification-meta">
+                            <span class="notification-date">{{ formatTime(item.create_time) }}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div v-else class="empty-state">
+                      <div class="i-carbon-checkmark-outline" />
+                      <p>暂无待审批的申领</p>
+                    </div>
+                  </el-tab-pane>
+                </el-tabs>
+                
+                <div class="notification-footer" v-if="totalNotifications > 0">
+                  <el-button text @click="viewAllNotifications">查看全部</el-button>
+                </div>
               </div>
-            </el-badge>
+            </el-popover>
           </div>
           
           <!-- 全屏按钮 -->
@@ -169,13 +257,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessageBox } from 'element-plus'
+import { ElMessageBox, ElMessage } from 'element-plus'
 import SystemLogo from '@/components/SystemLogo.vue'
 import UserProfile from '@/components/UserProfile.vue'
 import ChangePassword from '@/components/ChangePassword.vue'
 import { useUserStore } from '@/stores/user'
+import { getPendingReservations, getPendingReagents } from '@/api/notification'
 
 const route = useRoute()
 const router = useRouter()
@@ -184,8 +273,89 @@ const isCollapse = ref(false)
 const userProfileVisible = ref(false)
 const changePasswordVisible = ref(false)
 
+// 通知相关
+const activeTab = ref('reservation')
+const pendingReservations = ref([])
+const pendingReagents = ref([])
+const notificationLoading = ref(false)
+
+// 计算总通知数
+const totalNotifications = computed(() => {
+  return pendingReservations.value.length + pendingReagents.value.length
+})
+
 const toggleCollapse = () => {
   isCollapse.value = !isCollapse.value
+}
+
+// 加载未审批数据
+const loadNotifications = async () => {
+  notificationLoading.value = true
+  try {
+    // 获取未审批的实验室预约
+    const reservationRes = await getPendingReservations()
+    if (reservationRes.code === 0) {
+      pendingReservations.value = reservationRes.data || []
+    }
+    
+    // 获取未审批的试剂申领
+    const reagentRes = await getPendingReagents()
+    if (reagentRes.code === 0) {
+      pendingReagents.value = reagentRes.data || []
+    }
+  } catch (error) {
+    console.error('加载通知失败:', error)
+  } finally {
+    notificationLoading.value = false
+  }
+}
+
+// 格式化时间
+const formatTime = (timestamp) => {
+  if (!timestamp) return ''
+  const date = new Date(timestamp * 1000)
+  const now = new Date()
+  const diff = now - date
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  
+  if (days === 0) {
+    const hours = Math.floor(diff / (1000 * 60 * 60))
+    if (hours === 0) {
+      const minutes = Math.floor(diff / (1000 * 60))
+      return minutes === 0 ? '刚刚' : `${minutes}分钟前`
+    }
+    return `${hours}小时前`
+  } else if (days === 1) {
+    return '昨天'
+  } else if (days < 7) {
+    return `${days}天前`
+  } else {
+    return date.toLocaleDateString('zh-CN')
+  }
+}
+
+// 处理通知点击
+const handleNotificationClick = (type, item) => {
+  if (type === 'reservation') {
+    router.push('/lab/reservation')
+  } else if (type === 'reagent') {
+    router.push('/reagents')
+  }
+}
+
+// 标记所有为已读
+const markAllAsRead = () => {
+  ElMessage.success('已标记所有通知为已读')
+  loadNotifications()
+}
+
+// 查看全部通知
+const viewAllNotifications = () => {
+  if (activeTab.value === 'reservation') {
+    router.push('/lab/reservation')
+  } else {
+    router.push('/reagents')
+  }
 }
 
 const showUserProfile = () => {
@@ -232,6 +402,14 @@ onMounted(async () => {
     console.error('获取菜单失败，使用默认菜单:', error)
     userStore.setDefaultMenus()
   }
+  
+  // 加载通知数据
+  loadNotifications()
+  
+  // 定时刷新通知（每30秒）
+  setInterval(() => {
+    loadNotifications()
+  }, 30000)
 })
 </script>
 
@@ -736,5 +914,147 @@ onMounted(async () => {
 .content-area::-webkit-scrollbar-thumb:hover,
 .menu-container::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.5);
+}
+
+/* =========================== 通知样式 =========================== */
+.notification-container {
+  padding: 0;
+}
+
+.notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.notification-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.notification-tabs {
+  border-bottom: none;
+}
+
+.notification-tabs :deep(.el-tabs__header) {
+  margin: 0;
+  padding: 0 20px;
+}
+
+.notification-tabs :deep(.el-tabs__item) {
+  height: 40px;
+  line-height: 40px;
+}
+
+.tab-badge {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+}
+
+.notification-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.notification-item {
+  display: flex;
+  padding: 12px 20px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.notification-item:hover {
+  background-color: #f9fafb;
+}
+
+.notification-item:last-child {
+  border-bottom: none;
+}
+
+.notification-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+  margin-right: 12px;
+}
+
+.notification-icon.reagent {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.notification-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-text {
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.5;
+  margin-bottom: 4px;
+}
+
+.notification-text strong {
+  color: #1f2937;
+}
+
+.notification-time {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.notification-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.notification-date {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.empty-state {
+  padding: 40px 20px;
+  text-align: center;
+  color: #9ca3af;
+}
+
+.empty-state > div {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.notification-footer {
+  padding: 12px 20px;
+  border-top: 1px solid #e5e7eb;
+  text-align: center;
+}
+
+/* 通知弹出框样式 */
+:deep(.notification-popover) {
+  padding: 0 !important;
+}
+
+:deep(.notification-popover .el-popover__title) {
+  display: none;
 }
 </style> 

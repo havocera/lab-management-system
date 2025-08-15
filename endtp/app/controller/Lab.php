@@ -266,4 +266,44 @@ class Lab extends BaseController
             return json(['code' => 500, 'msg' => '更换失败：' . $e->getMessage(), 'data' => []]);
         }
     }
+    
+    /**
+     * 获取待审批的实验室预约
+     */
+    public function pendingReservations()
+    {
+        try {
+            $pendingList = Db::name('lab_reservation')
+                ->alias('r')
+                ->join('lab l', 'r.lab_id = l.id')
+                ->join('user u', 'r.user_id = u.id')
+                ->where('r.status', 'pending')
+                ->field([
+                    'r.id',
+                    'r.lab_id',
+                    'r.user_id',
+                    'r.start_time',
+                    'r.end_time',
+                    'r.purpose',
+                    'r.create_time',
+                    'l.name as lab_name',
+                    'l.room_no',
+                    'u.name as user_name',
+                    'u.phone as user_phone'
+                ])
+                ->order('r.create_time', 'desc')
+                ->select();
+                
+            // 格式化时间
+            foreach ($pendingList as &$item) {
+                $item['start_time'] = date('Y-m-d H:i', strtotime($item['start_time']));
+                $item['end_time'] = date('Y-m-d H:i', strtotime($item['end_time']));
+                $item['create_time'] = strtotime($item['create_time']);
+            }
+            
+            return json(['code' => 0, 'msg' => '获取成功', 'data' => $pendingList]);
+        } catch (\Exception $e) {
+            return json(['code' => 1, 'msg' => '获取失败：' . $e->getMessage()]);
+        }
+    }
 } 

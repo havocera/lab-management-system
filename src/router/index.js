@@ -40,6 +40,15 @@ export const constantRoutes = [
         }
       },
       {
+        path: 'labs/:id/equipment',
+        name: 'LabEquipmentManage',
+        component: () => import('@/views/LabEquipmentManageView.vue'),
+        meta: {
+          requiresAuth: true,
+          title: '实验室设备管理'
+        }
+      },
+      {
         path: 'equipment',
         name: 'equipment',
         component: () => import('../views/EquipmentListView.vue'),
@@ -47,6 +56,16 @@ export const constantRoutes = [
           requiresAuth: true,
           title: '设备管理',
           icon: 'i-carbon-tool-box'
+        }
+      },
+      {
+        path: 'maintenance-records',
+        name: 'MaintenanceRecords',
+        component: () => import('@/views/MaintenanceRecordView.vue'),
+        meta: {
+          requiresAuth: true,
+          title: '设备维护记录',
+          icon: 'i-carbon-tool-kit'
         }
       },
       {
@@ -65,7 +84,7 @@ export const constantRoutes = [
         component: () => import('../views/ReagentRecordView.vue'),
         meta: {
           requiresAuth: true,
-          title: '试剂使用记录',
+          title: '试剂使用',
           icon: 'i-carbon-document'
         }
       },
@@ -107,6 +126,15 @@ export const constantRoutes = [
           requiresAuth: true,
           title: '实验室预约',
           icon: 'i-carbon-calendar'
+        }
+      },
+      {
+        path: 'lab/reservation/create',
+        name: 'LabReservationCreate',
+        component: () => import('@/views/LabReservationCreateView.vue'),
+        meta: {
+          requiresAuth: true,
+          title: '预约实验室'
         }
       },
       {

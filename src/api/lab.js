@@ -65,7 +65,7 @@ export function deleteLab(id) {
 // 获取用户列表（用于负责人选择）
 export function getUsers() {
   return request({
-    url: '/lab/getUsers',
+    url: '/user/list',
     method: 'get'
   })
 }

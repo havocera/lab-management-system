@@ -504,4 +504,131 @@ class User extends BaseController
             return json(['code' => 1, 'msg' => '创建失败：' . $e->getMessage()]);
         }
     }
+    
+    /**
+     * 更新用户
+     */
+    public function update(Request $request)
+    {
+        $data = $request->post();
+        
+        if (!isset($data['id']) || !$data['id']) {
+            return json(['code' => 1, 'msg' => '用户ID不能为空']);
+        }
+        
+        $userId = $data['id'];
+        unset($data['id']);
+        
+        // 验证数据
+        $validate = validate([
+            'name' => 'require|max:50',
+            'phone' => 'require|mobile',
+            'email' => 'require|email',
+            'role' => 'require|max:20'
+        ]);
+
+        if (!$validate->check($data)) {
+            return json(['code' => 1, 'msg' => $validate->getError()]);
+        }
+        
+        // 检查用户是否存在
+        $user = Db::name('user')->where('id', $userId)->find();
+        if (!$user) {
+            return json(['code' => 1, 'msg' => '用户不存在']);
+        }
+        
+        // 检查手机号是否重复
+        $existPhone = Db::name('user')
+            ->where('phone', $data['phone'])
+            ->where('id', '<>', $userId)
+            ->find();
+        if ($existPhone) {
+            return json(['code' => 1, 'msg' => '手机号已存在']);
+        }
+        
+        // 检查邮箱是否重复
+        $existEmail = Db::name('user')
+            ->where('email', $data['email'])
+            ->where('id', '<>', $userId)
+            ->find();
+        if ($existEmail) {
+            return json(['code' => 1, 'msg' => '邮箱已存在']);
+        }
+
+        // 检查角色是否存在
+        $role = Db::name('role')->where('code', $data['role'])->find();
+        if (!$role) {
+            return json(['code' => 1, 'msg' => '所选角色不存在']);
+        }
+
+        $data['update_time'] = date('Y-m-d H:i:s');
+
+        try {
+            // 开启事务
+            Db::startTrans();
+            
+            // 更新用户信息
+            Db::name('user')->where('id', $userId)->update([
+                'name' => $data['name'],
+                'phone' => $data['phone'],
+                'email' => $data['email'],
+                'role' => $data['role'],
+                'update_time' => $data['update_time']
+            ]);
+            
+            // 更新用户角色
+            Db::name('user_role')->where('user_id', $userId)->delete();
+            Db::name('user_role')->insert([
+                'user_id' => $userId,
+                'role_id' => $role['id'],
+                'create_time' => date('Y-m-d H:i:s')
+            ]);
+            
+            Db::commit();
+            return json(['code' => 0, 'msg' => '更新成功']);
+        } catch (\Exception $e) {
+            Db::rollback();
+            return json(['code' => 1, 'msg' => '更新失败：' . $e->getMessage()]);
+        }
+    }
+    
+    /**
+     * 删除用户
+     */
+    public function delete(Request $request)
+    {
+        $id = $request->post('id');
+        
+        if (!$id) {
+            return json(['code' => 1, 'msg' => '用户ID不能为空']);
+        }
+        
+        // 检查用户是否存在
+        $user = Db::name('user')->where('id', $id)->find();
+        if (!$user) {
+            return json(['code' => 1, 'msg' => '用户不存在']);
+        }
+        
+        // 不能删除超级管理员
+        if ($user['username'] === 'admin') {
+            return json(['code' => 1, 'msg' => '不能删除超级管理员账户']);
+        }
+        
+        try {
+            // 开启事务
+            Db::startTrans();
+            
+            // 删除用户角色关系
+            Db::name('user_role')->where('user_id', $id)->delete();
+            
+            // 删除用户
+            Db::name('user')->where('id', $id)->delete();
+            
+            Db::commit();
+            return json(['code' => 0, 'msg' => '删除成功']);
+        } catch (\Exception $e) {
+            Db::rollback();
+            return json(['code' => 1, 'msg' => '删除失败：' . $e->getMessage()]);
+        }
+    }
 } 

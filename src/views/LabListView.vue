@@ -3,7 +3,7 @@
     <!-- 页面标题和操作按钮 -->
     <div class="flex items-center justify-between">
       <h2 class="text-2xl font-medium">实验室管理</h2>
-      <el-button type="primary" @click="handleAdd">
+      <el-button v-if="canAddLab" type="primary" @click="handleAdd">
         <div class="i-carbon-add mr-1" />
         新增实验室
       </el-button>
@@ -30,9 +30,9 @@
         </el-form-item>
         <el-form-item label="状态"  style="width: 240px">
           <el-select v-model="searchForm.status" placeholder="请选择状态" clearable>
-            <el-option label="空闲" :value="0" />
-            <el-option label="使用中" :value="1" />
-            <el-option label="维护中" :value="2" />
+            <el-option label="空闲" value="0" />
+            <el-option label="使用中" value="1" />
+            <el-option label="维护中" value="2" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -86,7 +86,7 @@
             {{ row.create_time }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
             <el-button-group>
               <el-button type="primary" link @click="handleEdit(row)">
@@ -94,6 +94,9 @@
               </el-button>
               <el-button type="primary" link @click="handleView(row)">
                 查看
+              </el-button>
+              <el-button type="success" link @click="handleEquipment(row)">
+                设备管理
               </el-button>
               <el-button type="danger" link @click="handleDelete(row)">
                 删除
@@ -181,9 +184,28 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getLabList, addLab, updateLab, deleteLab, getUsers } from '@/api/lab'
+import { useUserStore } from '@/stores/user'
+import { useRouter } from 'vue-router'
+
+const userStore = useUserStore()
+const router = useRouter()
+
+// 检查用户权限
+const isAdmin = computed(() => userStore.roles.includes('admin'))
+const currentUserId = computed(() => userStore.userInfo?.id)
+
+// 检查用户是否能操作指定实验室
+const canOperateLab = (lab) => {
+  return isAdmin.value || lab.manager_id === currentUserId.value
+}
+
+// 检查用户是否能新增实验室
+const canAddLab = computed(() => {
+  return isAdmin.value
+})
 
 // 搜索表单
 const searchForm = reactive({
@@ -257,7 +279,7 @@ const loadUsers = async () => {
     const res = await getUsers()
     console.log('用户列表返回结果:', res)
     if (res.code === 0) {
-      userList.value = res.data || []
+      userList.value = res.data.list || []
       console.log('用户列表加载成功:', userList.value)
     } else {
       console.error('获取用户列表失败:', res.msg)
@@ -304,10 +326,22 @@ const fetchData = async () => {
       location: searchForm.location
     }
     
+    // 如果不是管理员，添加manager_id筛选条件
+    if (!isAdmin.value && currentUserId.value) {
+      params.manager_id = currentUserId.value
+    }
+    
     const res = await getLabList(params)
     if (res.data) {
-      labList.value = res.data.list
-      total.value = res.data.total
+      let labs = res.data.list || []
+      
+      // 前端再次过滤（以防API不支持manager_id参数）
+      if (!isAdmin.value && currentUserId.value) {
+        labs = labs.filter(lab => lab.manager_id === currentUserId.value)
+      }
+      
+      labList.value = labs
+      total.value = isAdmin.value ? (res.data.total || 0) : labs.length
     }
   } catch (error) {
     console.error('获取数据失败：', error)
@@ -334,6 +368,11 @@ const handleEdit = (row) => {
   dialogType.value = 'edit'
   dialogVisible.value = true
   Object.assign(form, row)
+}
+
+// 设备管理
+const handleEquipment = (row) => {
+  router.push(`/labs/${row.id}/equipment`)
 }
 
 // 查看

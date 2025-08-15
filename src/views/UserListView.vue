@@ -3,10 +3,20 @@
     <!-- 页面标题 -->
     <div class="flex items-center justify-between">
       <h2 class="text-2xl font-medium">用户管理</h2>
-      <el-button type="primary" @click="handleAdd">
-        <div class="i-carbon-add mr-1" />
-        添加用户
-      </el-button>
+      <div class="flex gap-2">
+        <el-button 
+          type="danger" 
+          :disabled="selectedUsers.length === 0"
+          @click="handleBatchDelete"
+        >
+          <div class="i-carbon-trash-can mr-1" />
+          批量删除 ({{ selectedUsers.length }})
+        </el-button>
+        <el-button type="primary" @click="handleAdd">
+          <div class="i-carbon-add mr-1" />
+          添加用户
+        </el-button>
+      </div>
     </div>
 
     <!-- 搜索和筛选 -->
@@ -65,8 +75,13 @@
         border
         stripe
         style="width: 100%"
+        @selection-change="handleSelectionChange"
       >
-        <el-table-column type="selection" width="55" />
+        <el-table-column 
+          type="selection" 
+          width="55" 
+          :selectable="(row) => row.username !== 'admin'"
+        />
         <el-table-column prop="username" label="用户名" width="150" />
         <el-table-column prop="name" label="姓名" width="120" />
         <el-table-column prop="phone" label="手机号" width="150" />
@@ -87,33 +102,58 @@
         </el-table-column>
         <el-table-column prop="last_login_time" label="最后登录时间" width="180">
           <template #default="{ row }">
-            {{ formatDateTime(row.last_login_time) }}
+            {{ row.last_login_time }}
           </template>
         </el-table-column>
         <el-table-column prop="last_login_ip" label="最后登录IP" width="150" />
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
             <el-button
               type="primary"
               link
+              size="small"
               @click="handleEdit(row)"
             >
+              <div class="i-carbon-edit mr-1" />
               编辑
             </el-button>
             <el-button
               type="warning"
               link
+              size="small"
               @click="handleResetPassword(row)"
             >
+              <div class="i-carbon-password mr-1" />
               重置密码
             </el-button>
             <el-button
               :type="row.status === 'active' ? 'danger' : 'success'"
               link
+              size="small"
               @click="handleToggleStatus(row)"
             >
+              <div :class="row.status === 'active' ? 'i-carbon-user-x mr-1' : 'i-carbon-user-activity mr-1'" />
               {{ row.status === 'active' ? '禁用' : '启用' }}
             </el-button>
+            <el-popconfirm
+              title="确定要删除这个用户吗？"
+              confirm-button-text="确定"
+              cancel-button-text="取消"
+              confirm-button-type="danger"
+              @confirm="handleDelete(row)"
+            >
+              <template #reference>
+                <el-button
+                  type="danger"
+                  link
+                  size="small"
+                  :disabled="row.username === 'admin'"
+                >
+                  <div class="i-carbon-trash-can mr-1" />
+                  删除
+                </el-button>
+              </template>
+            </el-popconfirm>
           </template>
         </el-table-column>
       </el-table>
@@ -149,7 +189,7 @@
           <el-input
             v-model="userForm.username"
             placeholder="请输入用户名"
-            :disabled="dialogType === 'edit'"
+            
           />
         </el-form-item>
         <el-form-item label="姓名" prop="name">
@@ -199,9 +239,9 @@
       </el-form>
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="submitForm">
-            确认
+          <el-button @click="handleCancel">取消</el-button>
+          <el-button type="primary" @click="submitForm" :loading="submitLoading">
+            {{ dialogType === 'add' ? '创建用户' : '保存修改' }}
           </el-button>
         </span>
       </template>
@@ -210,9 +250,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getUserList, updateUserStatus, resetUserPassword, createUser, updateUser } from '@/api/user'
+import { getUserList, updateUserStatus, resetUserPassword, createUser, updateUser, deleteUser } from '@/api/user'
 import { getRoleList } from '@/api/role'
 
 // 搜索表单
@@ -229,11 +269,13 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const userList = ref([])
+const selectedUsers = ref([])
 
 // 对话框相关
 const dialogVisible = ref(false)
 const dialogType = ref('add') // 'add' 或 'edit'
 const userFormRef = ref(null)
+const submitLoading = ref(false)
 const userForm = reactive({
   id: '',
   username: '',
@@ -345,30 +387,52 @@ const handleCurrentChange = (val) => {
   fetchData()
 }
 
+// 清空表单
+const resetForm = () => {
+  Object.assign(userForm, {
+    id: '',
+    username: '',
+    name: '',
+    phone: '',
+    email: '',
+    role: '',
+    password: '',
+    confirmPassword: ''
+  })
+  if (userFormRef.value) {
+    userFormRef.value.clearValidate()
+  }
+}
+
 // 添加用户
 const handleAdd = () => {
   dialogType.value = 'add'
-  userForm.id = ''
-  userForm.username = ''
-  userForm.name = ''
-  userForm.phone = ''
-  userForm.email = ''
-  userForm.role = ''
-  userForm.password = ''
-  userForm.confirmPassword = ''
+  resetForm()
   dialogVisible.value = true
 }
 
 // 编辑用户
 const handleEdit = (row) => {
   dialogType.value = 'edit'
-  userForm.id = row.id
-  userForm.username = row.username
-  userForm.name = row.name
-  userForm.phone = row.phone
-  userForm.email = row.email
-  userForm.role = row.role
+  resetForm()
+  // 延迟赋值，确保表单已经清空
+  nextTick(() => {
+    Object.assign(userForm, {
+      id: row.id,
+      username: row.username,
+      name: row.name,
+      phone: row.phone,
+      email: row.email,
+      role: row.role
+    })
+  })
   dialogVisible.value = true
+}
+
+// 取消对话框
+const handleCancel = () => {
+  dialogVisible.value = false
+  resetForm()
 }
 
 // 提交表单
@@ -377,6 +441,7 @@ const submitForm = async () => {
   
   await userFormRef.value.validate(async (valid) => {
     if (valid) {
+      submitLoading.value = true
       try {
         let res
         if (dialogType.value === 'add') {
@@ -401,16 +466,87 @@ const submitForm = async () => {
         }
         
         if (res.code === 0) {
-          ElMessage.success(dialogType.value === 'add' ? '添加成功' : '更新成功')
+          ElMessage.success(dialogType.value === 'add' ? '用户创建成功' : '用户信息更新成功')
           dialogVisible.value = false
+          resetForm()
           fetchData()
+          // 清空选中项
+          selectedUsers.value = []
         } else {
-          ElMessage.error(res.msg || (dialogType.value === 'add' ? '添加失败' : '更新失败'))
+          ElMessage.error(res.msg || (dialogType.value === 'add' ? '用户创建失败' : '用户信息更新失败'))
         }
       } catch (error) {
         console.error('操作失败:', error)
-        ElMessage.error(dialogType.value === 'add' ? '添加失败' : '更新失败')
+        ElMessage.error(dialogType.value === 'add' ? '用户创建失败' : '用户信息更新失败')
+      } finally {
+        submitLoading.value = false
       }
+    }
+  })
+}
+
+// 选择变化
+const handleSelectionChange = (selection) => {
+  selectedUsers.value = selection
+}
+
+// 删除用户
+const handleDelete = async (row) => {
+  try {
+    const res = await deleteUser({ id: row.id })
+    if (res.code === 0) {
+      ElMessage.success('删除成功')
+      fetchData()
+      // 清空选中项
+      selectedUsers.value = []
+    } else {
+      ElMessage.error(res.msg || '删除失败')
+    }
+  } catch (error) {
+    console.error('删除用户失败:', error)
+    ElMessage.error('删除用户失败')
+  }
+}
+
+// 批量删除
+const handleBatchDelete = () => {
+  if (selectedUsers.value.length === 0) {
+    ElMessage.warning('请选择要删除的用户')
+    return
+  }
+  
+  const userNames = selectedUsers.value.map(user => user.name).join('、')
+  ElMessageBox.confirm(
+    `确定要删除选中的 ${selectedUsers.value.length} 个用户吗？\n用户：${userNames}`,
+    '批量删除确认',
+    {
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+      dangerouslyUseHTMLString: true
+    }
+  ).then(async () => {
+    try {
+      const deletePromises = selectedUsers.value.map(user => 
+        deleteUser({ id: user.id })
+      )
+      
+      const results = await Promise.allSettled(deletePromises)
+      const successCount = results.filter(result => 
+        result.status === 'fulfilled' && result.value.code === 0
+      ).length
+      
+      if (successCount === selectedUsers.value.length) {
+        ElMessage.success(`成功删除 ${successCount} 个用户`)
+      } else {
+        ElMessage.warning(`成功删除 ${successCount} 个用户，${selectedUsers.value.length - successCount} 个失败`)
+      }
+      
+      fetchData()
+      selectedUsers.value = []
+    } catch (error) {
+      console.error('批量删除失败:', error)
+      ElMessage.error('批量删除失败')
     }
   })
 }

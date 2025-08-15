@@ -1,35 +1,107 @@
 <template>
-  <div class="space-y-4">
-    <!-- 页面标题和操作按钮 -->
-    <div class="flex items-center justify-between">
-      <h2 class="text-2xl font-medium">实验设备管理</h2>
-      <el-button type="primary" @click="handleAdd">
-        <div class="i-carbon-add mr-1" />
-        新增设备
-      </el-button>
+  <div class="equipment-management">
+    <!-- 页面头部 -->
+    <div class="page-header">
+      <div class="header-content">
+        <div class="title-section">
+          <div class="i-carbon-tool-box text-3xl text-blue-600" />
+          <div>
+            <h1 class="page-title">实验设备管理</h1>
+            <p class="page-subtitle">管理和维护实验室设备信息</p>
+          </div>
+        </div>
+        <el-button type="primary" size="large" @click="handleAdd" class="add-btn">
+          <div class="i-carbon-add mr-2" />
+          新增设备
+        </el-button>
+      </div>
     </div>
 
-    <!-- 搜索和筛选 -->
-    <el-card>
-      <el-form :model="searchForm" inline>
-        <el-form-item label="设备名称">
+    <!-- 统计卡片 -->
+    <div class="stats-grid">
+      <div class="stat-card total">
+        <div class="stat-icon">
+          <div class="i-carbon-tool-box" />
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">设备总数</div>
+          <div class="stat-value">{{ statistics.total }}</div>
+        </div>
+      </div>
+      <div class="stat-card normal">
+        <div class="stat-icon">
+          <div class="i-carbon-checkmark-filled" />
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">正常设备</div>
+          <div class="stat-value">{{ statistics.normal }}</div>
+        </div>
+      </div>
+      <div class="stat-card repairing">
+        <div class="stat-icon">
+          <div class="i-carbon-warning-filled" />
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">维修中</div>
+          <div class="stat-value">{{ statistics.repairing }}</div>
+        </div>
+      </div>
+      <div class="stat-card scrapped">
+        <div class="stat-icon">
+          <div class="i-carbon-trash-can" />
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">报废设备</div>
+          <div class="stat-value">{{ statistics.scrapped }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 搜索区域 -->
+    <el-card class="search-card">
+      <template #header>
+        <div class="card-header">
+          <div class="i-carbon-search mr-2" />
+          <span>搜索筛选</span>
+        </div>
+      </template>
+      <el-form :model="searchForm" inline class="search-form">
+        <el-form-item>
           <el-input
             v-model="searchForm.name"
             placeholder="请输入设备名称"
             clearable
             @keyup.enter="handleSearch"
-          />
+            class="search-input"
+          >
+            <template #prefix>
+              <div class="i-carbon-tool-box text-gray-400" />
+            </template>
+          </el-input>
         </el-form-item>
-        <el-form-item label="设备编号">
+        <el-form-item>
           <el-input
             v-model="searchForm.serial_number"
             placeholder="请输入设备编号"
             clearable
             @keyup.enter="handleSearch"
-          />
+            class="search-input"
+          >
+            <template #prefix>
+              <div class="i-carbon-hashtag text-gray-400" />
+            </template>
+          </el-input>
         </el-form-item>
-        <el-form-item label="所属实验室" style="width: 240px">
-          <el-select v-model="searchForm.lab_id" placeholder="请选择实验室" clearable>
+        <el-form-item>
+          <el-select 
+            v-model="searchForm.lab_id" 
+            placeholder="请选择实验室" 
+            clearable
+            class="search-select"
+          >
+            <template #prefix>
+              <div class="i-carbon-chemistry text-gray-400" />
+            </template>
             <el-option
               v-for="lab in labOptions"
               :key="lab.id"
@@ -38,19 +110,27 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="设备状态" style="width: 240px">
-          <el-select v-model="searchForm.status" placeholder="请选择状态" clearable>
+        <el-form-item>
+          <el-select 
+            v-model="searchForm.status" 
+            placeholder="请选择状态" 
+            clearable
+            class="search-select"
+          >
+            <template #prefix>
+              <div class="i-carbon-status text-gray-400" />
+            </template>
             <el-option label="正常" value="normal" />
             <el-option label="维修中" value="repairing" />
             <el-option label="报废" value="scrapped" />
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">
+          <el-button type="primary" @click="handleSearch" class="search-btn">
             <div class="i-carbon-search mr-1" />
             搜索
           </el-button>
-          <el-button @click="handleReset">
+          <el-button @click="handleReset" class="reset-btn">
             <div class="i-carbon-reset mr-1" />
             重置
           </el-button>
@@ -59,69 +139,104 @@
     </el-card>
 
     <!-- 设备列表 -->
-    <el-card>
+    <el-card class="table-card">
+      <template #header>
+        <div class="card-header">
+          <div class="i-carbon-list mr-2" />
+          <span>设备列表</span>
+          <div class="table-actions">
+            <el-button text size="small" @click="fetchData">
+              <div class="i-carbon-renew mr-1" />
+              刷新
+            </el-button>
+          </div>
+        </div>
+      </template>
       <el-table
         v-loading="loading"
         :data="equipmentList"
-        border
         stripe
-        style="width: 100%"
+        class="equipment-table"
       >
         <el-table-column type="selection" width="55" />
-        <el-table-column prop="name" label="设备名称" min-width="180">
+        <el-table-column prop="name" label="设备名称" min-width="200">
           <template #default="{ row }">
-            <div class="flex items-center">
+            <div class="equipment-item">
               <el-image
                 :src="row.image"
-                class="w-8 h-8 mr-2 rounded"
+                class="equipment-image"
                 fit="cover"
                 :preview-src-list="[row.image]"
               >
                 <template #error>
-                  <div class="w-8 h-8 mr-2 rounded bg-gray-200 flex items-center justify-center">
+                  <div class="image-placeholder">
                     <div class="i-carbon-image text-gray-400" />
                   </div>
                 </template>
               </el-image>
-              {{ row.name }}
+              <div class="equipment-info">
+                <div class="equipment-name">{{ row.name }}</div>
+                <div class="equipment-model">{{ row.model }}</div>
+              </div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="serial_number" label="设备编号" width="120" />
-        <el-table-column label="所属实验室" width="200">
+        <el-table-column prop="serial_number" label="设备编号" width="140">
           <template #default="{ row }">
-            {{ row.lab_name }} ({{ row.lab_room_no }})
+            <el-tag type="info" size="small" class="serial-tag">
+              {{ row.serial_number }}
+            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="price" label="设备价值" width="120">
+        <el-table-column label="所属实验室" width="180">
           <template #default="{ row }">
-            ¥{{ row.price.toLocaleString() }}
+            <div class="lab-info">
+              <div class="i-carbon-chemistry text-blue-500 mr-1" />
+              <span>{{ row.lab_name }}</span>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="price" label="设备价值" width="120" align="right">
+          <template #default="{ row }">
+            <div class="price-display">
+              ¥{{ row.price.toLocaleString() }}
+            </div>
           </template>
         </el-table-column>
         <el-table-column prop="purchase_date" label="购入日期" width="120" />
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="getStatusTag(row.status)">{{ getStatusName(row.status) }}</el-tag>
+            <el-tag 
+              :type="getStatusTag(row.status)" 
+              :class="`status-${row.status}`"
+              size="small"
+            >
+              {{ getStatusName(row.status) }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="manufacturer" label="生产厂商" width="150" />
         <el-table-column prop="maintainer" label="维护人员" width="120" />
-        <el-table-column label="操作" width="250" fixed="right">
+        <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
-            <el-button-group>
-              <el-button type="primary" link @click="handleEdit(row)">
+            <div class="action-buttons">
+              <el-button type="primary" link size="small" @click="handleEdit(row)">
+                <div class="i-carbon-edit mr-1" />
                 编辑
               </el-button>
-              <el-button type="primary" link @click="handleView(row)">
+              <el-button type="info" link size="small" @click="handleView(row)">
+                <div class="i-carbon-view mr-1" />
                 查看
               </el-button>
-              <el-button type="warning" link @click="handleMaintenance(row)">
-                维护记录
+              <el-button type="warning" link size="small" @click="handleMaintenance(row)">
+                <div class="i-carbon-tool-kit mr-1" />
+                维护
               </el-button>
-              <el-button type="danger" link @click="handleDelete(row)">
+              <el-button type="danger" link size="small" @click="handleDelete(row)">
+                <div class="i-carbon-trash-can mr-1" />
                 删除
               </el-button>
-            </el-button-group>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -235,10 +350,19 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getEquipmentList, addEquipment, updateEquipment, deleteEquipment } from '@/api/equipment'
 import { getLabList } from '@/api/lab'
+import { useUserStore } from '@/stores/user'
+import { useRouter } from 'vue-router'
+
+const userStore = useUserStore()
+const router = useRouter()
+
+// 检查用户权限
+const isAdmin = computed(() => userStore.roles.includes('admin'))
+const currentUserId = computed(() => userStore.userInfo?.id)
 
 // 搜索表单
 const searchForm = reactive({
@@ -271,6 +395,21 @@ const pageSize = ref(10)
 const total = ref(0)
 const equipmentList = ref([])
 
+// 统计数据
+const statistics = computed(() => {
+  const total = equipmentList.value.length
+  const normal = equipmentList.value.filter(item => item.status === 'normal').length
+  const repairing = equipmentList.value.filter(item => item.status === 'repairing').length
+  const scrapped = equipmentList.value.filter(item => item.status === 'scrapped').length
+  
+  return {
+    total,
+    normal,
+    repairing,
+    scrapped
+  }
+})
+
 // 表单数据
 const dialogVisible = ref(false)
 const dialogType = ref('add')
@@ -294,15 +433,14 @@ const form = reactive({
 const rules = {
   name: [
     { required: true, message: '请输入设备名称', trigger: 'blur' },
-    { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
+    { min: 1, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
   ],
   model: [
     { required: true, message: '请输入设备型号', trigger: 'blur' },
     { max: 50, message: '长度不能超过 50 个字符', trigger: 'blur' }
   ],
   serial_number: [
-    { required: true, message: '请输入设备编号', trigger: 'blur' },
-    { pattern: /^\d{10}$/, message: '编号格式为：10位数字，如：2024001001', trigger: 'blur' }
+    { required: true, message: '请输入设备编号', trigger: 'blur' }
   ],
   lab_id: [
     { required: true, message: '请选择所属实验室', trigger: 'change' },
@@ -382,6 +520,11 @@ const fetchData = async () => {
       status: searchForm.status
     }
     
+    // 如果不是管理员，只显示用户管理的实验室的设备
+    if (!isAdmin.value && currentUserId.value) {
+      params.manager_id = currentUserId.value
+    }
+    
     const res = await getEquipmentList(params)
     if (res.data) {
       equipmentList.value = res.data.list
@@ -446,7 +589,10 @@ const handleView = (row) => {
 
 // 维护记录
 const handleMaintenance = (row) => {
-  ElMessage('查看维护记录：' + row.name)
+  router.push({
+    path: '/maintenance-records',
+    query: { equipment_id: row.id, equipment_name: row.name }
+  })
 }
 
 // 删除
@@ -518,25 +664,321 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.el-card {
-  --el-card-padding: 16px;
+/* 整体布局 */
+.equipment-management {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  padding: 24px;
 }
 
+/* 页面头部 */
+.page-header {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.title-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.page-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0;
+}
+
+.page-subtitle {
+  color: #7f8c8d;
+  margin: 4px 0 0 0;
+  font-size: 14px;
+}
+
+.add-btn {
+  height: 44px;
+  padding: 0 24px;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+/* 统计卡片 */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+}
+
+.stat-card.total::before { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+.stat-card.normal::before { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+.stat-card.repairing::before { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+.stat-card.scrapped::before { background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%); }
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.stat-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: white;
+}
+
+.stat-card.total .stat-icon { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+.stat-card.normal .stat-icon { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+.stat-card.repairing .stat-icon { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+.stat-card.scrapped .stat-icon { background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%); }
+
+.stat-content {
+  flex: 1;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #7f8c8d;
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+/* 卡片样式 */
+.search-card, .table-card {
+  border-radius: 12px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  border: none;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.table-actions {
+  margin-left: auto;
+}
+
+/* 搜索表单 */
+.search-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+.search-input, .search-select {
+  width: 200px;
+}
+
+.search-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 8px;
+}
+
+.reset-btn {
+  border-radius: 8px;
+}
+
+/* 表格样式 */
+.equipment-table {
+  :deep(.el-table__header) {
+    background: #f8f9fa;
+  }
+  
+  :deep(.el-table__row:hover) {
+    background: #f8f9ff;
+  }
+}
+
+.equipment-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.equipment-image {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.image-placeholder {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed #d9d9d9;
+}
+
+.equipment-info {
+  flex: 1;
+}
+
+.equipment-name {
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 2px;
+}
+
+.equipment-model {
+  font-size: 12px;
+  color: #7f8c8d;
+}
+
+.serial-tag {
+  background: #f0f2f5;
+  border: none;
+  font-family: 'Monaco', 'Consolas', monospace;
+  letter-spacing: 0.5px;
+}
+
+.lab-info {
+  display: flex;
+  align-items: center;
+}
+
+.price-display {
+  font-weight: 600;
+  color: #e67e22;
+  font-family: 'Monaco', 'Consolas', monospace;
+}
+
+.status-normal {
+  background: linear-gradient(135deg, #4facfe 20%, #00f2fe 100%);
+  border: none;
+  color: white;
+}
+
+.status-repairing {
+  background: linear-gradient(135deg, #f093fb 20%, #f5576c 100%);
+  border: none;
+  color: white;
+}
+
+.status-scrapped {
+  background: linear-gradient(135deg, #ffecd2 20%, #fcb69f 100%);
+  border: none;
+  color: #d63031;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* 上传组件 */
 .avatar-uploader {
   :deep(.el-upload) {
-    @apply border border-dashed border-gray-300 rounded cursor-pointer overflow-hidden;
+    border: 2px dashed #d9d9d9;
+    border-radius: 8px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s;
     width: 96px;
     height: 96px;
   }
 
   :deep(.el-upload:hover) {
-    @apply border-primary;
+    border-color: #409eff;
+    background: #fafbff;
   }
 }
 
 .avatar-uploader-icon {
-  @apply flex items-center justify-center text-3xl text-gray-400;
+  font-size: 28px;
+  color: #8c939d;
   width: 96px;
   height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .equipment-management {
+    padding: 16px;
+  }
+  
+  .page-header {
+    padding: 16px;
+  }
+  
+  .header-content {
+    flex-direction: column;
+    gap: 16px;
+    text-align: center;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .search-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .search-input, .search-select {
+    width: 100%;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    gap: 4px;
+  }
 }
 </style> 

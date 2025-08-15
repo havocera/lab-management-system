@@ -80,6 +80,15 @@ export function resetUserPassword(data) {
   })
 }
 
+// 删除用户
+export function deleteUser(data) {
+  return request({
+    url: '/user/delete',
+    method: 'post',
+    data
+  })
+}
+
 // 获取登录日志
 export function getLoginLogs(params) {
   return request({

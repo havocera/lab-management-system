@@ -20,6 +20,7 @@ class Equipment extends BaseController
         $serialNumber = $request->param('serial_number', '');
         $labId = $request->param('lab_id', '');
         $status = $request->param('status', '');
+        $managerId = $request->param('manager_id', '');
 
         $where = [];
         if ($name) {
@@ -34,9 +35,15 @@ class Equipment extends BaseController
         if ($status) {
             $where[] = ['e.status', '=', $status];
         }
+        
+        // 如果传入了manager_id参数，只显示该管理员管理的实验室的设备
+        if ($managerId) {
+            $where[] = ['l.manager_id', '=', $managerId];
+        }
 
         $total = Db::name('equipment')
             ->alias('e')
+            ->join('lab l', 'e.lab_id = l.id')
             ->where($where)
             ->count();
 
@@ -117,7 +124,7 @@ class Equipment extends BaseController
             'name' => 'require|max:50',
             'model' => 'require|max:50',
             'serial_number' => "require|max:50|unique:equipment,serial_number,{$data['id']},id",
-            'lab_id' => 'require|number|exist:lab,id',
+            'lab_id' => 'require|number',
             'status' => 'require|in:normal,maintenance,scrapped',
             'purchase_date' => 'require|date',
             'price' => 'require|float|egt:0',

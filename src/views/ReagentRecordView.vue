@@ -340,7 +340,7 @@ const fetchData = async () => {
       recordList.value = res.data.list.map(item => ({
         ...item,
         // 格式化日期
-        create_time: formatDateTime(item.create_time)
+        create_time: item.create_time
       }))
       total.value = res.data.total
     } else {

@@ -18,20 +18,21 @@ export function getReservationList(params) {
   })
 }
 
+// 获取我的预约
+export function getMyReservations(params) {
+  return request({
+    url: '/reservation/my',
+    method: 'get',
+    params
+  })
+}
+
 // 取消预约
 export function cancelReservation(id) {
   return request({
     url: '/reservation/cancel',
     method: 'post',
     data: { id }
-  })
-}
-
-// 获取我的预约
-export function getMyReservations() {
-  return request({
-    url: '/reservation/my',
-    method: 'get'
   })
 }
 
@@ -42,4 +43,12 @@ export function reviewReservation(data) {
     method: 'post',
     data
   })
-} 
+}
+
+// 获取明日预约统计
+export function getTomorrowReservations() {
+  return request({
+    url: '/reservation/tomorrow-count',
+    method: 'get'
+  })
+}

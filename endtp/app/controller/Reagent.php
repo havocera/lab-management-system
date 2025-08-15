@@ -23,6 +23,7 @@ class Reagent extends BaseController
         $code = $request->param('code', '');
         $labId = $request->param('lab_id', '');
         $dangerLevel = $request->param('danger_level', '');
+        $managerId = $request->param('manager_id', '');
 
         $where = [];
         if ($name) {
@@ -36,6 +37,11 @@ class Reagent extends BaseController
         }
         if ($dangerLevel) {
             $where[] = ['r.danger_level', '=', $dangerLevel];
+        }
+        
+        // 如果传入了manager_id参数，只显示该管理员管理的实验室的试剂
+        if ($managerId) {
+            $where[] = ['l.manager_id', '=', $managerId];
         }
 
         $total = Db::name('reagent')
@@ -423,5 +429,44 @@ class Reagent extends BaseController
                 'total' => $total
             ]
         ]);
+    }
+    
+    /**
+     * 获取待审批的试剂申领记录
+     */
+    public function pendingRecords(Request $request)
+    {
+        try {
+            $pendingList = Db::name('reagent_record')
+                ->alias('r')
+                ->join('reagent g', 'r.reagent_id = g.id')
+                ->where('r.status', 'pending')
+                ->field([
+                    'r.id',
+                    'r.reagent_id',
+                    'r.type',
+                    'r.amount',
+                    'r.unit',
+                    'r.operator',
+                    'r.remark',
+                    'r.create_time',
+                    'g.name as reagent_name',
+                    'g.code as reagent_code',
+                    'g.specification',
+                    'g.danger_level'
+                ])
+                ->order('r.create_time', 'desc')
+                ->select();
+                
+            // 格式化数据
+            foreach ($pendingList as &$item) {
+                // create_time 已经是时间戳格式
+                $item['create_time'] = (int)$item['create_time'];
+            }
+            
+            return json(['code' => 0, 'msg' => '获取成功', 'data' => $pendingList]);
+        } catch (\Exception $e) {
+            return json(['code' => 1, 'msg' => '获取失败：' . $e->getMessage()]);
+        }
     }
 } 

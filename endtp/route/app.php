@@ -27,6 +27,9 @@ Route::group('user', function () {
 // 用户管理相关路由
 Route::group('user', function () {
     Route::get('list', 'User/index');
+    Route::post('create', 'User/create');
+    Route::post('update', 'User/update');
+    Route::post('delete', 'User/delete');
     Route::post('update-status', 'User/updateStatus');
     Route::post('reset-password', 'User/resetPassword');
     Route::get('login-logs', 'User/loginLogs');
@@ -59,6 +62,7 @@ Route::group('permission', function () {
         Route::post('add', 'Lab/add');
         Route::post('update', 'Lab/update');
         Route::post('delete', 'Lab/delete');
+        Route::get('pendingReservations', 'Lab/pendingReservations');  // 添加待审批预约路由
     })->middleware('jwt');
 
     // 设备管理
@@ -70,6 +74,18 @@ Route::group('permission', function () {
         Route::post('delete', 'Equipment/delete');
     })->middleware('jwt');
 
+    // 设备维护记录管理
+    Route::group('maintenance', function () {
+        Route::get('records', 'Maintenance/records');
+        Route::get('records/detail', 'Maintenance/detail');
+        Route::post('records/add', 'Maintenance/add');
+        Route::post('records/update', 'Maintenance/update');
+        Route::post('records/delete', 'Maintenance/delete');
+        Route::post('records/complete', 'Maintenance/complete');
+        Route::get('stats', 'Maintenance/stats');
+        Route::get('trends', 'Maintenance/trends');
+    })->middleware('jwt');
+
     // 试剂管理
     Route::group('reagent', function () {
         Route::get('/', 'Reagent/index');
@@ -79,6 +95,8 @@ Route::group('permission', function () {
         Route::post('delete', 'Reagent/delete');
         Route::post('in-out', 'Reagent/inOut');
         Route::post('approve', 'Reagent/approve');
+        Route::get('pendingRecords', 'Reagent/pendingRecords');  // 添加待审批记录路由
+        Route::get('records', 'Reagent/records');  // 添加记录查询路由
     })->middleware('jwt');
 
     // 预约管理
@@ -88,6 +106,12 @@ Route::group('permission', function () {
         Route::get('my', 'Reservation/my');
         Route::post('cancel', 'Reservation/cancel');
         Route::post('review', 'Reservation/review');
+        Route::get('tomorrow-count', 'Reservation/tomorrowCount');  // 添加明日预约统计路由
+        
+        // 使用记录相关路由
+        Route::post('usage-record/create', 'Reservation/createUsageRecord');
+        Route::get('usage-record/get', 'Reservation/getUsageRecord');
+        Route::get('usage-record/list', 'Reservation/getUsageRecords');
     })->middleware('jwt');
 
 // 仪表盘路由

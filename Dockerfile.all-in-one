@@ -35,6 +35,7 @@ COPY . .
 
 # 构建前端
 RUN npm install --registry https://registry.npmmirror.com
+RUN cp .env.docker .env.local
 RUN npm run build
 
 # 安装后端依赖

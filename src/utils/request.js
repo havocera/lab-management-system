@@ -4,9 +4,7 @@ import router from '@/router'
 
 // 创建axios实例
 const service = axios.create({
-  baseURL: process.env.NODE_ENV === 'development' 
-    ? 'http://lab.com' 
-    : 'http://api.yourdomain.com',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   timeout: 15000, // 请求超时时间
   headers: {
     'Content-Type': 'application/json;charset=utf-8'

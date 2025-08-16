@@ -84,11 +84,11 @@ jobs:
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
 
-  # 部署到云服务器 (可选)
+  # 部署到云服务器 (可选 - 需要配置secrets)
   deploy-to-server:
     needs: [build-frontend, build-images]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && secrets.HOST != ''
     environment: production
     steps:
     - name: Deploy to server via SSH
@@ -103,7 +103,7 @@ jobs:
           cd /opt/lab-management-system
           git pull origin main
           
-          # 登录到GitHub Container Registry
+          # 登录到GitHub Container Registry  
           echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
           
           # 更新Docker镜像

@@ -17,7 +17,7 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 WORKDIR /var/www/html
 
 # 复制后端代码
-COPY endtp/ ./
+COPY . ./
 
 # 安装PHP依赖
 RUN composer install --no-dev --optimize-autoloader

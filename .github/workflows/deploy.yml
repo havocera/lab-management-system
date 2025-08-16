@@ -115,11 +115,12 @@ jobs:
           # 清理旧镜像
           docker image prune -f
 
-  # GitHub Pages部署 (仅前端)
+  # GitHub Pages部署 (仅前端) - 需要在仓库设置中启用Pages
   deploy-pages:
     needs: build-frontend
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+    continue-on-error: true  # 如果Pages未启用则跳过
     permissions:
       pages: write
       id-token: write

@@ -38,21 +38,12 @@ jobs:
         name: frontend-dist
         path: dist/
 
-  # 构建Docker镜像
-  build-images:
+  # 构建一体化Docker镜像
+  build-all-in-one:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-    strategy:
-      matrix:
-        include:
-          - name: frontend
-            context: .
-            dockerfile: Dockerfile
-          - name: backend
-            context: endtp
-            dockerfile: Dockerfile
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -68,25 +59,25 @@ jobs:
       id: meta
       uses: docker/metadata-action@v5
       with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.name }}
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         tags: |
           type=ref,event=branch
           type=ref,event=pr
           type=sha,prefix=sha-
           type=raw,value=latest,enable={{is_default_branch}}
 
-    - name: Build and push Docker image
+    - name: Build and push all-in-one Docker image
       uses: docker/build-push-action@v5
       with:
-        context: ${{ matrix.context }}
-        dockerfile: ${{ matrix.dockerfile }}
+        context: .
+        dockerfile: Dockerfile.all-in-one
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
 
   # 部署到云服务器 (可选 - 需要配置secrets)
   deploy-to-server:
-    needs: [build-frontend, build-images]
+    needs: [build-all-in-one]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push' && secrets.HOST != ''
     environment: production
@@ -99,18 +90,21 @@ jobs:
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         port: ${{ secrets.PORT || 22 }}
         script: |
-          # 拉取最新代码
-          cd /opt/lab-management-system
-          git pull origin main
+          # 停止现有容器
+          docker stop lab-management-system || true
+          docker rm lab-management-system || true
           
           # 登录到GitHub Container Registry  
           echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
           
-          # 更新Docker镜像
-          docker compose pull
+          # 拉取最新镜像
+          docker pull ghcr.io/${{ github.repository }}:latest
           
-          # 重启服务
-          docker compose up -d
+          # 启动新容器
+          docker run -d \
+            --name lab-management-system \
+            -p 80:80 \
+            ghcr.io/${{ github.repository }}:latest
           
           # 清理旧镜像
           docker image prune -f

@@ -72,25 +72,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-
-  # Redis缓存服务 (可选)
-  redis:
-    image: redis:7-alpine
-    container_name: labmanage_redis
-    restart: unless-stopped
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - labmanage_network
-    command: redis-server --appendonly yes
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 3
-
 networks:
   labmanage_network:
     driver: bridge

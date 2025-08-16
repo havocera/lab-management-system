@@ -2,8 +2,8 @@
 node_modules
 npm-debug.log
 
-# Backend directory (separate container)
-endtp/
+# Backend directory (for separate builds only)
+# endtp/ - 一体化构建时需要包含
 
 # Git
 .git
@@ -19,7 +19,7 @@ endtp/
 .DS_Store
 Thumbs.db
 
-# Logs
+# Logs (except for reference)
 logs
 *.log
 
@@ -38,9 +38,12 @@ LICENSE
 deploy.sh
 deploy.bat
 deploy-prod.sh
+
+# Separate docker files (keep all-in-one)
 docker-compose.yml
 docker-compose.prod.yml
+Dockerfile
+# Dockerfile.all-in-one - 需要保留
 
-# Database
-database/
-labmanage.sql
+# Old nginx config
+nginx.conf

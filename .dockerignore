@@ -1,0 +1,46 @@
+# Node modules
+node_modules
+npm-debug.log
+
+# Backend directory (separate container)
+endtp/
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs
+*.log
+
+# Runtime directories
+tmp/
+temp/
+
+# Documentation
+*.md
+CHANGELOG.md
+CONTRIBUTING.md
+DEPLOYMENT.md
+LICENSE
+
+# Deployment scripts
+deploy.sh
+deploy.bat
+deploy-prod.sh
+docker-compose.yml
+docker-compose.prod.yml
+
+# Database
+database/
+labmanage.sql

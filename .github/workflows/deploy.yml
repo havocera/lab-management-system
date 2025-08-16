@@ -115,33 +115,37 @@ jobs:
           # 清理旧镜像
           docker image prune -f
 
-  # GitHub Pages部署 (仅前端) - 需要在仓库设置中启用Pages
-  deploy-pages:
-    needs: build-frontend
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    continue-on-error: true  # 如果Pages未启用则跳过
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-    - name: Download build artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: frontend-dist
-        path: dist/
-
-    - name: Setup Pages
-      uses: actions/configure-pages@v4
-
-    - name: Upload to GitHub Pages
-      uses: actions/upload-pages-artifact@v3
-      with:
-        path: dist/
-
-    - name: Deploy to GitHub Pages
-      id: deployment
-      uses: actions/deploy-pages@v4
+  # GitHub Pages部署 (仅前端) - 手动启用
+  # 要启用Pages部署，请：
+  # 1. 访问仓库Settings > Pages
+  # 2. Source选择"GitHub Actions"
+  # 3. 取消注释以下代码块
+  
+  # deploy-pages:
+  #   needs: build-frontend
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/main'
+  #   permissions:
+  #     pages: write
+  #     id-token: write
+  #   environment:
+  #     name: github-pages
+  #     url: ${{ steps.deployment.outputs.page_url }}
+  #   steps:
+  #   - name: Download build artifacts
+  #     uses: actions/download-artifact@v4
+  #     with:
+  #       name: frontend-dist
+  #       path: dist/
+  #
+  #   - name: Setup Pages
+  #     uses: actions/configure-pages@v4
+  #
+  #   - name: Upload to GitHub Pages
+  #     uses: actions/upload-pages-artifact@v3
+  #     with:
+  #       path: dist/
+  #
+  #   - name: Deploy to GitHub Pages
+  #     id: deployment
+  #     uses: actions/deploy-pages@v4

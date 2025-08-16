@@ -75,20 +75,21 @@ jobs:
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
 
-  # 部署到云服务器 (可选 - 需要配置secrets)
+  # 自动部署到服务器
   deploy-to-server:
     needs: [build-all-in-one]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && secrets.HOST != ''
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: production
     steps:
     - name: Deploy to server via SSH
+      if: ${{ secrets.SERVER_HOST != '' }}
       uses: appleboy/ssh-action@v1.0.3
       with:
-        host: ${{ secrets.HOST }}
-        username: ${{ secrets.USERNAME }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        port: ${{ secrets.PORT || 22 }}
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SERVER_KEY }}
+        port: ${{ secrets.SERVER_PORT || 22 }}
         script: |
           # 停止现有容器
           docker stop lab-management-system || true
@@ -104,10 +105,36 @@ jobs:
           docker run -d \
             --name lab-management-system \
             -p 80:80 \
+            --restart unless-stopped \
+            -v lab_mysql_data:/var/lib/mysql \
             ghcr.io/${{ github.repository }}:latest
+          
+          # 等待容器启动
+          sleep 10
+          
+          # 检查容器状态
+          docker ps | grep lab-management-system
           
           # 清理旧镜像
           docker image prune -f
+          
+          echo "🎉 部署完成! 应用已在端口80启动"
+
+    - name: 部署状态通知
+      if: ${{ secrets.SERVER_HOST == '' }}
+      run: |
+        echo "⚠️  服务器部署被跳过"
+        echo "要启用自动部署，请在GitHub仓库设置中添加以下Secrets:"
+        echo "- SERVER_HOST: 服务器IP地址"
+        echo "- SERVER_USER: SSH用户名" 
+        echo "- SERVER_KEY: SSH私钥内容"
+        echo "- SERVER_PORT: SSH端口 (可选，默认22)"
+        echo ""
+        echo "✅ Docker镜像已成功构建并推送到:"
+        echo "ghcr.io/${{ github.repository }}:latest"
+        echo ""
+        echo "🚀 手动部署命令:"
+        echo "docker run -d --name lab-management-system -p 80:80 --restart unless-stopped ghcr.io/${{ github.repository }}:latest"
 
   # GitHub Pages部署 (仅前端) - 手动启用
   # 要启用Pages部署，请：

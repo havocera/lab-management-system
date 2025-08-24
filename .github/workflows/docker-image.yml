@@ -1,84 +1,88 @@
-# 一体化容器：前端 + 后端 + MySQL
-FROM ubuntu:22.04
+name: 🐳 Docker 镜像构建
 
-# 设置环境变量避免交互式安装
-ENV DEBIAN_FRONTEND=noninteractive
-ENV TZ=Asia/Shanghai
+on:
+  push:
+    branches: [ main, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
 
-# 安装基础依赖
-RUN apt-get update && apt-get install -y \
-    nginx \
-    mysql-server \
-    php8.1-fpm \
-    php8.1-mysql \
-    php8.1-cli \
-    php8.1-curl \
-    php8.1-json \
-    php8.1-mbstring \
-    php8.1-xml \
-    php8.1-zip \
-    curl \
-    supervisor \
-    nodejs \
-    npm \
-    && rm -rf /var/lib/apt/lists/*
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
-# 安装Composer
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+jobs:
+  build-and-push:
+    name: 构建并推送镜像
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
-# 设置工作目录
-WORKDIR /app
+    strategy:
+      matrix:
+        include:
+          - dockerfile: ./Dockerfile
+            image: frontend
+            context: .
+          - dockerfile: ./endtp/Dockerfile
+            image: php-fpm
+            context: ./endtp
+          - dockerfile: ./endtp/Dockerfile.nginx
+            image: php-nginx
+            context: ./endtp
 
-# 复制项目文件
-COPY package*.json ./
-COPY . .
+    steps:
+      - name: 📥 检出代码
+        uses: actions/checkout@v4
 
-# 构建前端
-RUN npm install --registry https://registry.npmmirror.com
-RUN cp .env.docker .env.local
-RUN npm run build
+      - name: 🐳 设置 Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-# 安装后端依赖
-WORKDIR /app/endtp
-RUN composer install --no-dev --optimize-autoloader
+      - name: 🔐 登录到 Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-# 配置MySQL
-RUN mkdir -p /var/run/mysqld && chown mysql:mysql /var/run/mysqld
-RUN usermod -d /var/lib/mysql/ mysql
+      - name: 🏷️ 提取元数据
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.image }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,prefix={{branch}}-
 
-# 初始化MySQL数据库
-RUN service mysql start && \
-    mysql -u root -e "CREATE DATABASE IF NOT EXISTS labmanage;" && \
-    mysql -u root -e "CREATE USER IF NOT EXISTS 'labuser'@'localhost' IDENTIFIED BY 'labpass123';" && \
-    mysql -u root -e "GRANT ALL PRIVILEGES ON labmanage.* TO 'labuser'@'localhost';" && \
-    mysql -u root -e "FLUSH PRIVILEGES;"
+      - name: 🏗️ 构建并推送 Docker 镜像
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          dockerfile: ${{ matrix.dockerfile }}
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-# 导入数据库结构
-COPY labmanage.sql /tmp/
-RUN service mysql start && mysql -u root labmanage < /tmp/labmanage.sql
+      - name: 🔍 镜像安全扫描
+        if: github.event_name != 'pull_request'
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.image }}:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
 
-# 配置Nginx
-COPY nginx-all-in-one.conf /etc/nginx/sites-available/default
-
-# 配置PHP-FPM
-RUN sed -i 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/' /etc/php/8.1/fpm/php.ini
-
-# 复制前端构建文件到Nginx目录
-RUN cp -r /app/dist/* /var/www/html/
-
-# 复制后端文件
-RUN mkdir -p /var/www/api
-RUN cp -r /app/endtp/* /var/www/api/
-
-# 设置权限
-RUN chown -R www-data:www-data /var/www/
-RUN chmod -R 755 /var/www/
-
-# 创建Supervisor配置
-COPY supervisord-all-in-one.conf /etc/supervisor/conf.d/supervisord.conf
-
-# 暴露端口
-EXPOSE 80
-
-# 启动Supervisor管理所有服务
-CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+      - name: 📊 上传扫描结果
+        if: github.event_name != 'pull_request'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'

@@ -1,172 +1,179 @@
-name: Deploy Laboratory Management System
+name: 🚀 实验室管理系统 - 自动部署
 
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  workflow_dispatch:
 
 jobs:
-  # 构建前端
-  build-frontend:
+  # 代码质量检查
+  lint-and-test:
+    name: 🔍 代码检查和测试
     runs-on: ubuntu-latest
+    
     steps:
-    - name: Checkout repository
+    - name: 📥 检出代码
       uses: actions/checkout@v4
-
-    - name: Setup Node.js
+      
+    - name: 🟢 设置 Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
         cache: 'npm'
-
-    - name: Install dependencies
+        
+    - name: 📦 安装前端依赖
       run: npm ci
-
-    - name: Build application
+      
+    - name: 🎨 前端代码格式检查
+      run: npm run format || true
+      
+    - name: 🔨 构建前端项目
       run: npm run build
-      env:
-        VITE_API_URL: ${{ secrets.API_URL || 'https://your-backend-domain.com/api' }}
-
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
+      
+    - name: 🐘 设置 PHP
+      uses: shivammathur/setup-php@v2
       with:
-        name: frontend-dist
-        path: dist/
+        php-version: '8.2'
+        extensions: pdo_mysql, mysqli, curl, json, mbstring
+        
+    - name: 📦 安装 Composer 依赖
+      run: |
+        cd endtp
+        composer install --prefer-dist --no-progress --no-dev
+        
+    - name: ✅ PHP 语法检查
+      run: |
+        cd endtp
+        find . -name "*.php" -not -path "./vendor/*" -exec php -l {} \;
 
-  # 构建一体化Docker镜像
-  build-all-in-one:
+  # Docker 镜像构建
+  build-docker:
+    name: 🐳 构建 Docker 镜像
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
+    needs: lint-and-test
+    if: github.ref == 'refs/heads/main'
+    
     steps:
-    - name: Checkout repository
+    - name: 📥 检出代码
       uses: actions/checkout@v4
-
-    - name: Log in to Container Registry
+      
+    - name: 🐳 设置 Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: 🔐 登录 Docker Hub
       uses: docker/login-action@v3
       with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Extract metadata
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        tags: |
-          type=ref,event=branch
-          type=ref,event=pr
-          type=sha,prefix=sha-
-          type=raw,value=latest,enable={{is_default_branch}}
-
-    - name: Build and push all-in-one Docker image
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+      if: github.event_name != 'pull_request'
+      
+    - name: 🏗️ 构建并推送前端镜像
       uses: docker/build-push-action@v5
       with:
         context: .
-        dockerfile: Dockerfile.all-in-one
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
+        dockerfile: ./Dockerfile
+        platforms: linux/amd64,linux/arm64
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/labmanage-frontend:latest
+          ${{ secrets.DOCKER_USERNAME }}/labmanage-frontend:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        
+    - name: 🏗️ 构建并推送后端 PHP-FPM 镜像
+      uses: docker/build-push-action@v5
+      with:
+        context: ./endtp
+        dockerfile: ./endtp/Dockerfile
+        platforms: linux/amd64,linux/arm64
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/labmanage-php-fpm:latest
+          ${{ secrets.DOCKER_USERNAME }}/labmanage-php-fpm:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        
+    - name: 🏗️ 构建并推送后端 Nginx 镜像
+      uses: docker/build-push-action@v5
+      with:
+        context: ./endtp
+        dockerfile: ./endtp/Dockerfile.nginx
+        platforms: linux/amd64,linux/arm64
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/labmanage-php-nginx:latest
+          ${{ secrets.DOCKER_USERNAME }}/labmanage-php-nginx:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
 
-  # 自动部署到服务器
-  deploy-to-server:
-    needs: [build-all-in-one]
+  # 部署到服务器（可选）
+  deploy:
+    name: 🚀 部署到服务器
     runs-on: ubuntu-latest
+    needs: build-docker
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: production
+    
     steps:
-    - name: Deploy to server via SSH
-      if: ${{ secrets.SERVER_HOST != '' }}
-      uses: appleboy/ssh-action@v1.0.3
+    - name: 📥 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 🔐 设置 SSH
+      uses: webfactory/ssh-agent@v0.9.0
       with:
-        host: ${{ secrets.SERVER_HOST }}
-        username: ${{ secrets.SERVER_USER }}
-        key: ${{ secrets.SERVER_KEY }}
-        port: ${{ secrets.SERVER_PORT || 22 }}
-        script: |
-          # 停止现有容器
-          docker stop lab-management-system || true
-          docker rm lab-management-system || true
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      if: secrets.SSH_PRIVATE_KEY
+        
+    - name: 🚀 部署到服务器
+      if: secrets.SERVER_HOST && secrets.SSH_PRIVATE_KEY
+      run: |
+        # 复制 docker-compose 文件到服务器
+        scp -o StrictHostKeyChecking=no docker-compose.yml ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:~/labmanage/
+        scp -o StrictHostKeyChecking=no .env.example ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:~/labmanage/
+        scp -o StrictHostKeyChecking=no labmanage.sql ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:~/labmanage/
+        
+        # SSH 到服务器并更新部署
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+          cd ~/labmanage
           
-          # 登录到GitHub Container Registry  
-          echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          # 创建环境变量文件（如果不存在）
+          if [ ! -f .env ]; then
+            cp .env.example .env
+            echo "请在服务器上配置 .env 文件中的生产环境变量"
+          fi
           
           # 拉取最新镜像
-          docker pull ghcr.io/${{ github.repository }}:latest
+          docker-compose pull
           
-          # 启动新容器
-          docker run -d \
-            --name lab-management-system \
-            -p 80:80 \
-            --restart unless-stopped \
-            -v lab_mysql_data:/var/lib/mysql \
-            ghcr.io/${{ github.repository }}:latest
+          # 停止旧服务
+          docker-compose down
           
-          # 等待容器启动
-          sleep 10
+          # 启动新服务
+          docker-compose up -d
           
-          # 检查容器状态
-          docker ps | grep lab-management-system
-          
-          # 清理旧镜像
-          docker image prune -f
-          
-          echo "🎉 部署完成! 应用已在端口80启动"
+          # 显示服务状态
+          docker-compose ps
+        EOF
 
-    - name: 部署状态通知
-      if: ${{ secrets.SERVER_HOST == '' }}
+  # 通知部署结果
+  notify:
+    name: 📬 部署通知
+    runs-on: ubuntu-latest
+    needs: [lint-and-test, build-docker, deploy]
+    if: always()
+    
+    steps:
+    - name: ✅ 部署成功通知
+      if: needs.deploy.result == 'success'
       run: |
-        echo "⚠️  服务器部署被跳过"
-        echo "要启用自动部署，请在GitHub仓库设置中添加以下Secrets:"
-        echo "- SERVER_HOST: 服务器IP地址"
-        echo "- SERVER_USER: SSH用户名" 
-        echo "- SERVER_KEY: SSH私钥内容"
-        echo "- SERVER_PORT: SSH端口 (可选，默认22)"
-        echo ""
-        echo "✅ Docker镜像已成功构建并推送到:"
-        echo "ghcr.io/${{ github.repository }}:latest"
-        echo ""
-        echo "🚀 手动部署命令:"
-        echo "docker run -d --name lab-management-system -p 80:80 --restart unless-stopped ghcr.io/${{ github.repository }}:latest"
-
-  # GitHub Pages部署 (仅前端) - 手动启用
-  # 要启用Pages部署，请：
-  # 1. 访问仓库Settings > Pages
-  # 2. Source选择"GitHub Actions"
-  # 3. 取消注释以下代码块
-  
-  # deploy-pages:
-  #   needs: build-frontend
-  #   runs-on: ubuntu-latest
-  #   if: github.ref == 'refs/heads/main'
-  #   permissions:
-  #     pages: write
-  #     id-token: write
-  #   environment:
-  #     name: github-pages
-  #     url: ${{ steps.deployment.outputs.page_url }}
-  #   steps:
-  #   - name: Download build artifacts
-  #     uses: actions/download-artifact@v4
-  #     with:
-  #       name: frontend-dist
-  #       path: dist/
-  #
-  #   - name: Setup Pages
-  #     uses: actions/configure-pages@v4
-  #
-  #   - name: Upload to GitHub Pages
-  #     uses: actions/upload-pages-artifact@v3
-  #     with:
-  #       path: dist/
-  #
-  #   - name: Deploy to GitHub Pages
-  #     id: deployment
-  #     uses: actions/deploy-pages@v4
+        echo "🎉 实验室管理系统部署成功！"
+        echo "📊 前端访问: http://your-domain.com:20080"
+        echo "🗄️ 数据库端口: 23306"
+        
+    - name: ❌ 部署失败通知
+      if: needs.deploy.result == 'failure' || needs.build-docker.result == 'failure' || needs.lint-and-test.result == 'failure'
+      run: |
+        echo "❌ 实验室管理系统部署失败！"
+        echo "🔍 请检查构建日志排查问题"

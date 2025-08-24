@@ -1,85 +1,102 @@
 version: '3.8'
 
 services:
-  # 数据库服务
-  database:
+  # MySQL数据库服务
+  mysql:
     image: mysql:8.0
-    container_name: labmanage_db
+    container_name: labmanage_mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${DB_DATABASE}
-      MYSQL_USER: ${DB_USERNAME}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-123456}
+      MYSQL_DATABASE: ${DB_DATABASE:-labmanage}
+      MYSQL_USER: ${DB_USERNAME:-labmanage}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-123456}
     ports:
-      - "${DB_PORT:-3306}:3306"
+      - "${DB_PORT:-23306}:3306"
     volumes:
-      - db_data:/var/lib/mysql
-      - ./database/init:/docker-entrypoint-initdb.d
+      # 使用根目录的SQL文件初始化数据库
+      - ./labmanage.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      # 数据持久化
+      - mysql_data:/var/lib/mysql
     networks:
       - labmanage_network
     command: --default-authentication-plugin=mysql_native_password
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-123456}"]
       timeout: 20s
       retries: 10
+      interval: 30s
 
-  # 后端API服务
-  backend:
+  # PHP-FPM服务
+  php-fpm:
     build:
       context: ./endtp
       dockerfile: Dockerfile
-    container_name: labmanage_backend
+    container_name: labmanage_php_fpm
     restart: unless-stopped
     environment:
-      DB_HOST: database
+      DB_HOST: mysql
       DB_PORT: 3306
-      DB_DATABASE: ${DB_DATABASE}
-      DB_USERNAME: ${DB_USERNAME}
-      DB_PASSWORD: ${DB_PASSWORD}
-      JWT_SECRET: ${JWT_SECRET}
+      DB_DATABASE: ${DB_DATABASE:-labmanage}
+      DB_USERNAME: ${DB_USERNAME:-labmanage}
+      DB_PASSWORD: ${DB_PASSWORD:-123456}
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key}
       APP_DEBUG: ${APP_DEBUG:-false}
-    ports:
-      - "${BACKEND_PORT:-8080}:80"
+    volumes:
+      # 映射后端代码到本地目录
+      - ./endtp:/var/www/html:rw
     depends_on:
-      database:
+      mysql:
         condition: service_healthy
     networks:
       - labmanage_network
+
+  # PHP后端Nginx服务
+  php-backend:
+    build:
+      context: ./endtp
+      dockerfile: Dockerfile.nginx
+    container_name: labmanage_php_backend
+    restart: unless-stopped
     volumes:
-      - backend_logs:/var/log
+      # 映射后端代码到本地目录
+      - ./endtp:/var/www/html:rw
+    depends_on:
+      - php-fpm
+    networks:
+      - labmanage_network
+
+  # 前端Nginx服务
+  nginx:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: labmanage_nginx
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-20080}:80"
+    volumes:
+      # 映射前端源码到本地目录用于开发
+      - ./src:/app/src:rw
+      - ./public:/app/public:rw
+      - ./package.json:/app/package.json:rw
+      - ./package-lock.json:/app/package-lock.json:rw
+      - ./vite.config.js:/app/vite.config.js:rw
+      - ./index.html:/app/index.html:rw
+    depends_on:
+      - php-backend
+    networks:
+      - labmanage_network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/"]
       interval: 30s
       timeout: 10s
       retries: 3
 
-  # 前端服务
-  frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: labmanage_frontend
-    restart: unless-stopped
-    ports:
-      - "${FRONTEND_PORT:-80}:80"
-    depends_on:
-      - backend
-    networks:
-      - labmanage_network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 networks:
   labmanage_network:
     driver: bridge
 
 volumes:
-  db_data:
-    driver: local
-  redis_data:
-    driver: local
-  backend_logs:
+  mysql_data:
     driver: local

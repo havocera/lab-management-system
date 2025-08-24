@@ -48,7 +48,7 @@ coverage/
 /cypress/screenshots/
 
 # PHP backend specific
-endtp/vendor/
+
 endtp/runtime/
 endtp/.env
 

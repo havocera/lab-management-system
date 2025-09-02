@@ -50,7 +50,7 @@ coverage/
 # PHP backend specific
 
 endtp/runtime/
-endtp/.env
+
 
 # Database
 *.sqlite

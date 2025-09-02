@@ -24,15 +24,15 @@ return [
             // 数据库类型
             'type'            => env('DATABASE.TYPE', 'mysql'),
             // 服务器地址
-            'hostname'        => env('DATABASE.HOSTNAME', '8.130.116.205'),
+            'hostname'        => env('DATABASE.HOSTNAME', 'mysql'),
             // 数据库名
             'database'        => 'labmanage',
             // 用户名
             'username'        => 'root',
             // 密码
-            'password'        => env('DATABASE.PASSWORD', '222222222222222'),
+            'password'        => env('DATABASE.PASSWORD', '123456'),
             // 端口
-            'hostport'        => env('DATABASE.HOSTPORT', '3306'),
+            'hostport'        => env('DATABASE.HOSTPORT', '23306'),
             // 数据库连接参数
             'params'          => [],
             // 数据库编码

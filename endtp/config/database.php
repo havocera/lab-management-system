@@ -28,11 +28,11 @@ return [
             // 数据库名
             'database'        => 'labmanage',
             // 用户名
-            'username'        => 'root',
+            'username'        => 'labmanage',
             // 密码
             'password'        => env('DATABASE.PASSWORD', '123456'),
             // 端口
-            'hostport'        => env('DATABASE.HOSTPORT', '23306'),
+            'hostport'        => env('DATABASE.HOSTPORT', '3306'),
             // 数据库连接参数
             'params'          => [],
             // 数据库编码
